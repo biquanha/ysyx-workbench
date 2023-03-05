@@ -125,37 +125,52 @@ typedef	__uint128_t fixedptud;
  * Putting them only in macros will effectively make them optional. */
 #define fixedpt_tofloat(T) ((float) ((T)*((float)(1)/(float)(1L << FIXEDPT_FBITS))))
 
+// 按照man实现的仙剑，其实fixedpt_abs和fixedpt_floor以及fixedpt_ceil还是有问题的，显示字体的错误就在这里
+// 对于游戏运行中无法理解的问题，基本一个就是在这实现的不对，字体的问题是浮点库模拟的问题？不追求全部完美了，这一版本的字体实现比较完整了
+
 /* Multiplies a fixedpt number with an integer, returns the result. */
 static inline fixedpt fixedpt_muli(fixedpt A, int B) {
-	return 0;
+	return (fixedpt)(A * B);
 }
 
 /* Divides a fixedpt number with an integer, returns the result. */
 static inline fixedpt fixedpt_divi(fixedpt A, int B) {
-	return 0;
+	return (fixedpt)(A / B);
 }
 
 /* Multiplies two fixedpt numbers, returns the result. */
 static inline fixedpt fixedpt_mul(fixedpt A, fixedpt B) {
-	return 0;
+	return (fixedpt)((A * B) >> FIXEDPT_FBITS);
 }
 
 
 /* Divides two fixedpt numbers, returns the result. */
 static inline fixedpt fixedpt_div(fixedpt A, fixedpt B) {
-	return 0;
+	return (fixedpt)((A / B) << FIXEDPT_FBITS);
 }
 
 static inline fixedpt fixedpt_abs(fixedpt A) {
-	return 0;
+	return (fixedpt)(A >0 ? A : -A);
 }
 
 static inline fixedpt fixedpt_floor(fixedpt A) {
-	return 0;
+	fixedpt temp;
+	if(A>0) temp=A & (~FIXEDPT_FMASK);
+	else {
+	  if(((-A) & FIXEDPT_FMASK)==0) temp=A;
+	  else temp=-((-A) & (~FIXEDPT_FMASK)) - FIXEDPT_ONE;
+	}
+	return temp;
 }
 
 static inline fixedpt fixedpt_ceil(fixedpt A) {
-	return 0;
+	fixedpt temp;
+	if(A>0){
+	  if((A & FIXEDPT_FMASK)==0) temp=A;
+	  else temp=(A & (~FIXEDPT_FMASK)) + FIXEDPT_ONE;
+	}
+	else temp=-((-A) & (~FIXEDPT_FMASK));
+	return temp;
 }
 
 /*

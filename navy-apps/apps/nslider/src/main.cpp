@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <assert.h>
 
+// 这里默认的400*300,由于是由于直接申请了最大大小，所以之前的通过申请和实际的局总就失效了，可以通过SDL_LoadBMP来获取相关信息
+// 但考虑到这个上层调用的消耗性，还是算了，就这样将就吧，也可以通过局部更新的方式来改。
 #define W 400
 #define H 300
 
@@ -11,8 +13,8 @@
 //   k/up - page up
 //   gg - first page
 
-// number of slides
-const int N = 10;
+// number of slides存储的bmp图片个数
+const int N = 2;
 // slides path pattern (starts from 0)
 const char *path = "/share/slides/slides-%d.bmp";
 

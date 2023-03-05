@@ -23,6 +23,25 @@ static void sh_prompt() {
 }
 
 static void sh_handle_cmd(const char *cmd) {
+  // 从 cmd 中获取命令名称
+  char* c_name = strtok((char*)cmd, " \n"); // 改为用“ ”分割可以把后面的作为一个字符串，为了可拓展性，改为了全部分割到遇到\n
+printf("%s\n",c_name);
+  if (c_name == NULL) {
+    // 如果没有命令名称，直接返回
+    return;
+  } 
+  else if (strcmp(c_name, "echo") == 0) {
+    // 处理 echo 命令
+    char* str = strtok(NULL, "\n"); // 获取“echo”的后面的指针 
+    sh_printf("%s\n", str);
+  }
+  else if((strcmp(c_name, "exit") == 0)){
+    exit(0);
+  }
+  else if((strcmp(c_name, "run") == 0)){
+    char* str = strtok(NULL, "\n");
+    execve((const char *)str, (char**)NULL, (char**)NULL);
+  }
 }
 
 void builtin_sh_run() {
