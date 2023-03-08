@@ -2,11 +2,20 @@ module ysyx_22050019_core(
   input       clk,
   input       rst_n,
   
-  output [31:0]inst_i,         //1_inst
+  //output [31:0]inst_i,         //1_inst
   output[63:0]inst_addr,
   
   output[63:0]inst_addr_if_id, //2_inst
   output[31:0]inst_if_id      
+);
+
+//取出指令的逻辑分离出来
+wire [31:0]        inst_i ;
+fetch fetch_data(
+    .clk (clk),
+    .rst (rst_n),
+    .addr(inst_addr),
+    .data(inst_i)
 );
 
 //fetch模块端口
@@ -19,10 +28,12 @@ ysyx_22050019_IFU IFU
     .snpc              (snpc|snpc_csr_id),
 
     .inst_i            (inst_i         ),
-    .inst_addr_o       (inst_addr_if_id), // 看指令执行进度的
     .inst_addr_reg_o   (inst_addr),       //第二级流水指令
+
+    .inst_addr_o       (inst_addr_if_id), // 看指令执行进度的
     .inst_o            (inst_if_id     )
 );
+
 
 
 //decode模块端口
