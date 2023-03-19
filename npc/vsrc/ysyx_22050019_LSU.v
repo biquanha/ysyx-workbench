@@ -1,6 +1,4 @@
 module ysyx_22050019_LSU(
-  // alu 结果
-  input [63:0]        result,
   // 读写位宽
   input [5:0]         mem_r_wdth ,
   input [3:0]         mem_w_wdth ,
@@ -10,9 +8,14 @@ module ysyx_22050019_LSU(
   input               ram_we_i    ,
 
   input               ram_re_i    ,
-
+  
+  // alu 结果
+  input [63:0]        result,
+  input  [4:0]        waddr_reg_i ,
   // 向reg的写数据
-  output [63:0]       wdata       ,
+  output              wen_reg_o   ,
+  output [4:0]        waddr_reg_o ,
+  output [63:0]       wdata_reg_o ,
 
   // 分为读写两个通道描述信号
   // 写通道
@@ -71,7 +74,9 @@ ysyx_22050019_mux #( .NR_KEY(4), .KEY_LEN(4), .DATA_LEN(8)) mem_w_wdth_mux      
 );
 
 //reg_control
-assign wdata  = ram_re_i ? mem_r_data : 64'b0;
+assign wen_reg_o    = ram_re_i;
+assign waddr_reg_o  = waddr_reg_i;
+assign wdata_reg_o  = ram_re_i ? mem_r_data : 64'b0;
 
 //ram_control
 assign ram_we    = ram_we_i ;
