@@ -230,9 +230,6 @@ void cpu_reset()
 //cpu运行一次
 void exec_once()
 {
-#ifdef CONFIG_ITRACE
-  itrace_record(dut->now_addr);
-#endif
   dut->clk = 0;
   dut -> eval();
 #ifdef CONFIG_DIFFTEST
@@ -275,11 +272,16 @@ int main(int argc, char** argv, char** env) {
     init_disasm("riscv64-pc-linux-gnu");
 //2流水线择在这里将cpu先跑一次，不可放在‘init_disasm（）’初始前
     //exec_once();
+    exec_once();
+    exec_once();
 #ifdef CONFIG_DIFFTEST
   init_difftest();
 #endif
     while (1) {
       IFDEF(CONFIG_DEVICE, device_update());
+#ifdef CONFIG_ITRACE
+  itrace_record(dut->now_addr);
+#endif
       exec_once();
       exec_once();
       exec_once();
