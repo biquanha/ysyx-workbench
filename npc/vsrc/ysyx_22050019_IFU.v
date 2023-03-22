@@ -11,7 +11,8 @@ module ysyx_22050019_IFU#(
     input                 inst_j            ,
     input   [63:0]        snpc              ,  
     
-    input  [31:0]         inst_i            ,
+    input  [63:0]         inst_i            ,
+    input  [1:0]          m_axi_r_resp_i    ,
     output reg            m_axi_rready      ,
     input                 m_axi_rvalid      ,
 
@@ -32,7 +33,8 @@ module ysyx_22050019_IFU#(
 
   reg  state_reg;
   reg  next_state;
-
+  
+  reg [1:0] rresp;
   // 状态转移
   always @(posedge clk) begin
     if (rst_n) begin
@@ -41,33 +43,54 @@ module ysyx_22050019_IFU#(
       state_reg <= next_state;
     end
   end
-  
+ always@(*) begin
+  if(rst_n) next_state = IDLE;
+  else case(state_reg)
+    IDLE :if(m_axi_arready) next_state = WAIT_READY;
+      else next_state = IDLE;
+
+    WAIT_READY : if(m_axi_rvalid)next_state = IDLE;
+    else next_state = WAIT_READY;
+
+    default : next_state = IDLE;
+  endcase
+end
+
   // 读的状态机
-  always @(*) begin
-    case (state_reg)
-      IDLE: begin
+always@(posedge clk)begin
+  if(rst_n)begin
         m_axi_arvalid   <= 1'b1;
         m_axi_rready    <= 1'b0;
-        if (m_axi_arready) begin
-          next_state    <= WAIT_READY;
-        end else begin
-          next_state  <= IDLE;
-        end
-      end
-      WAIT_READY: begin
+        rresp            <= 2'b0;
+  end
+  else begin
+    case(state_reg)
+      IDLE:
+      if(next_state==WAIT_READY) begin
         m_axi_arvalid   <= 1'b0;
         m_axi_rready    <= 1'b1;
-        if (m_axi_rvalid) begin
-          next_state    <= IDLE;
-        end else begin
-          next_state  <= WAIT_READY;
-        end
       end
-      default: begin
-        next_state <= IDLE;
+      else begin
+        rresp            <= 2'b0;
+        m_axi_arvalid   <= 1'b1;
+        m_axi_rready    <= 1'b0;
+      end
+
+      WAIT_READY:if(next_state==IDLE)begin
+        m_axi_arvalid   <= 1'b1;
+        m_axi_rready    <= 1'b0;
+        rresp           <= m_axi_r_resp_i;
+      end
+      else begin
+        m_axi_arvalid   <= 1'b0;
+        m_axi_rready    <= 1'b1;
+      end
+      default:begin
       end
     endcase
   end
+end
+
 //=========================
 // pc 计数器
 always @ (posedge clk) begin
@@ -92,6 +115,6 @@ end
 //ysyx_22050019_Reg #(64,64'b0) i1 (clk,rst_n,inst_addr,inst_addr_o,1'b1);
 
 assign inst_addr_o = inst_addr;
-assign inst_o      = inst_i;
+assign inst_o      = inst_i[31:0];
 
 endmodule
