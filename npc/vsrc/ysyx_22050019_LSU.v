@@ -159,7 +159,7 @@ assign m_axi_aw_valid = ram_we_i;
 
 //=============================================================
 //==========================读通道==============================
-import "DPI-C" function void balance_exec();
+import "DPI-C" function void arbiter_wait();
 localparam RS_IDLE = 2'd1;
 localparam RS_RHS  = 2'd2;
 
@@ -181,7 +181,6 @@ always@(*) begin
   if(rst) next_rstate = RS_IDLE;
   else case(rstate)
     RS_IDLE :if(m_axi_ar_ready&&m_axi_ar_valid) begin
-             balance_exec()                ;//多跑3个周期平衡
              next_rstate = RS_RHS;
     end
       else next_rstate = RS_IDLE;
@@ -204,6 +203,7 @@ always@(posedge clk)begin
       RS_IDLE:
       if(next_rstate==RS_RHS) begin
         m_axi_r_ready    <= 1'b1;
+        arbiter_wait()                ;//多跑3个周期平衡
       end
       else begin
         rresp            <= 2'b0;

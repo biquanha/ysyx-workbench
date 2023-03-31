@@ -24,10 +24,19 @@ void ebreak()
   debug_exit(cpu_gpr[10]);
 }
 // 同步总线访问
-bool flow_exec = false;
-void balance_exec(){
+bool arbiter_exec = false;
+void arbiter_wait(){
   //printf("1\n");
-  flow_exec = true;
+  arbiter_exec = true;
+}
+void arbiter_continue(){
+  //printf("1\n");
+  arbiter_exec = false;
+}
+bool icache_exec = false;
+void icache_wait(){
+  //printf("1\n");
+  icache_exec = true;
 }
 // =========================== Debug ===========================
 // =============== Itrace ===============
@@ -162,8 +171,13 @@ void difftest_exec_once()
     exec_once();
     exec_once();
     exec_once();
-    if(flow_exec){
-    flow_exec = false;
+    if(icache_exec){
+    icache_exec = false;
+    exec_once();
+    exec_once();
+    }
+    if(arbiter_exec){
+    arbiter_exec = false;
     exec_once();
     exec_once();
     exec_once();
@@ -222,7 +236,7 @@ void load_image()
 void gtkwave()
 {
     Verilated::traceEverOn(true);
-    dut->trace(m_trace, 5);
+    dut->trace(m_trace, 99);
     m_trace->open("top.vcd");
 }
 //cpu复位信号控制
@@ -293,6 +307,9 @@ int main(int argc, char** argv, char** env) {
     //exec_once();
     exec_once();
     exec_once();
+    exec_once();
+    exec_once();
+    icache_exec = false;
 #ifdef CONFIG_DIFFTEST
   init_difftest();
 #endif
@@ -304,8 +321,13 @@ int main(int argc, char** argv, char** env) {
       exec_once();
       exec_once();
       exec_once();
-      if(flow_exec){
-      flow_exec = false;
+      if(icache_exec){
+      icache_exec = false;
+      exec_once();
+      exec_once();
+      }
+      if(arbiter_exec){
+      arbiter_exec = false;
       exec_once();
       exec_once();
       exec_once();
