@@ -29,10 +29,6 @@ void arbiter_wait(){
   //printf("1\n");
   arbiter_exec = true;
 }
-void arbiter_continue(){
-  //printf("1\n");
-  arbiter_exec = false;
-}
 bool icache_exec = false;
 void icache_wait(){
   //printf("1\n");

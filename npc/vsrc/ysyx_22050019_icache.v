@@ -14,7 +14,6 @@
  * 共128行，2路组相联 - Index 6位
  * Tag = 32 - 3 - 6 = 23位
  */
-
 module ysyx_22050019_icache#(
   parameter R_DATA_WIDTH      = 64,
   parameter R_ADDR_WIDTH      = 64,
@@ -60,7 +59,7 @@ parameter RAMR     = OFFSET_WIDTH                        ;//3
 
 // 保存地址，miss后的写数据，偏移寄存器
 reg [ADDR_WIDTH-1:0]   addr  ;
-wire[INDEX_WIDTH-1:0]  index = addr[INDEXL:INDEXR];
+wire[INDEX_WIDTH-1:0]  index = ar_addr_i[INDEXL:INDEXR];
 
 // tag和标记位的寄存器值
 reg [TAG_WIDTH-1:0] tag  [WAY_DEPTH-1:0][INDEX_DEPTH-1:0];
@@ -97,7 +96,7 @@ always@(*) begin
     RAM_CEN[0] = 1;
     RAM_CEN[1] = 1;
   end
-  else if(next_state == S_HIT)
+  else if((state == S_IDLE)&(next_state == S_HIT)|(state == S_R)&(next_state == S_HIT))
   RAM_CEN[hit_waynum_i|waynum] = 0;
   else
   RAM_CEN[hit_waynum_i|waynum] = 1;
@@ -182,7 +181,7 @@ always@(posedge clk)begin
           addr                    <= {ar_addr_i[TAGL:INDEXR],OFFSET0};
           valid[random][index_in] <= 0;
           tag[random][index_in]   <= ar_addr_i[TAGL:TAGR];
-          cache_ar_valid_o    <= 1;
+          cache_ar_valid_o        <= 1;
           cache_ar_addr_o         <= {32'b0,ar_addr_i[TAGL:INDEXR],OFFSET0};
         end
         else begin

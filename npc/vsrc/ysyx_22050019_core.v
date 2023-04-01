@@ -65,7 +65,7 @@ ysyx_22050019_IFU IFU
 );
 
 //拉出来一个控制器来解决读hit与读总线的冲突,这是一个临时的方案
-import "DPI-C" function void arbiter_continue();
+
 reg stll_ar_ready ;
 reg stll_ar_rvalid;
 always@(*) begin
@@ -73,8 +73,7 @@ always@(*) begin
   stll_ar_ready = 0;
   stll_ar_rvalid= 0;
   end
-  else if(axi_lsu_sram_ar_ready|axi_lsu_sram_ar_ready) begin
-    arbiter_continue ();
+  else if(axi_lsu_sram_ar_ready|axi_lsu_sram_r_ready) begin
     stll_ar_rvalid = 0 ;
     stll_ar_ready  = 0 ;
   end

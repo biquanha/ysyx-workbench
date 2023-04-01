@@ -24,7 +24,7 @@ always @(posedge CLK) begin
     if(cen && wen) begin
         ram[A] <= (D & bwen) | (ram[A] & ~bwen);
     end
-    Q <= cen && !wen ? ram[A] : {2{$random}};
+    Q <= cen && !wen ? ram[A] : 64'b0;
 end
 
 endmodule
