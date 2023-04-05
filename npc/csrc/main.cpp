@@ -3,7 +3,7 @@
 #define MAX_SIM_TIME 15000000
 uint64_t sim_time = 0;
 unsigned long long debug_time = 0;
-#define DEBUG_SKIP 0
+#define DEBUG_SKIP 500000
 // 一些导入的接口
 void init_device();
 
@@ -261,10 +261,6 @@ void exec_once()
 {
   dut->clk = 0;
   dut -> eval();
-#ifdef CONFIG_DIFFTEST
-// 会增加一定的性能负担，且这个类型一旦溢出会导致程序被杀死
-  //debug_time++;
-#endif
 #ifdef CONFIG_GTKWAVE
   if(debug_time >= DEBUG_SKIP){
   m_trace -> dump(sim_time++);
@@ -310,6 +306,10 @@ int main(int argc, char** argv, char** env) {
   init_difftest();
 #endif
     while (1) {
+#ifdef CONFIG_DIFFTEST
+// 会增加一定的性能负担，且这个类型一旦溢出会导致程序被杀死
+  debug_time++;
+#endif
       IFDEF(CONFIG_DEVICE, device_update());
 #ifdef CONFIG_ITRACE
   itrace_record(dut->now_addr);
