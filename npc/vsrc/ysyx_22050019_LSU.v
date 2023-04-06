@@ -58,7 +58,7 @@ module ysyx_22050019_LSU# (
 //==========================信号初始化==============================
 //mem_r_data_mux
 wire [63:0] mem_r_data;
-wire [31:0] strb_rdata = ram_raddr[2] ? ram_rdata_i[63:32] >>ar_addr[1:0]*8: ram_rdata_i[31:0]>>ar_addr[1:0]*8;
+wire [31:0] strb_rdata = ram_raddr[2] ? ram_rdata_i[63:32] >> {ar_addr[1:0],3'b0}: ram_rdata_i[31:0] >> {ar_addr[1:0],3'b0};
 ysyx_22050019_mux #( .NR_KEY(6), .KEY_LEN(6), .DATA_LEN(64)) mem_r_data_mux          //of32,16,8  || 32,16,8
 (
   .key         (axi_m_mem_r_wdth),
@@ -75,7 +75,7 @@ ysyx_22050019_mux #( .NR_KEY(6), .KEY_LEN(6), .DATA_LEN(64)) mem_r_data_mux     
 
 //mem_w_wdth_mux
 wire [7:0] mem_w_mask;
-wire [63:0]strb_wdata = result[2] ? {ram_wdata_i[31: 0],ram_wdata_i[63:32]} << result[1:0]*8: ram_wdata_i[63:0] << result[1:0]*8;
+wire [63:0]strb_wdata = result[2] ? {ram_wdata_i[31: 0],ram_wdata_i[63:32]} << {result[1:0],3'b0} : ram_wdata_i[63:0] << {result[1:0],3'b0} ;
 ysyx_22050019_mux #( .NR_KEY(4), .KEY_LEN(4), .DATA_LEN(8)) mem_w_wdth_mux             //basic-64---8---16---32--
 (
   .key         (mem_w_wdth),
