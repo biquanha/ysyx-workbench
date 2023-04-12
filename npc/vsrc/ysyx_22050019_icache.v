@@ -59,7 +59,7 @@ parameter RAMR     = OFFSET_WIDTH                        ;//3
 
 // 保存地址，miss后的写数据，偏移寄存器
 reg [ADDR_WIDTH-1:0]   addr  ;
-wire[INDEX_WIDTH-1:0]  index = ar_addr_i[INDEXL:INDEXR];
+wire[INDEX_WIDTH-1:0]  index = addr[INDEXL:INDEXR];
 
 // tag和标记位的寄存器值
 reg [TAG_WIDTH-1:0] tag  [WAY_DEPTH-1:0][INDEX_DEPTH-1:0];
@@ -88,7 +88,7 @@ reg                    RAM_CEN[WAY_DEPTH-1:0]                                   
 wire                   RAM_WEN = (state == S_IDLE)&(next_state == S_HIT)         ;//为0是写使能1是读使能，读写控制hit是读数据
 wire [R_DATA_WIDTH-1:0]maskn   = 64'h0                                           ;//写掩码，目前是全位写，掩码在发送端处理了
 wire [INDEX_DEPTH-1:0] RAM_BWEN= maskn                                           ;//ram写掩码目前一样不用过多处理
-wire [INDEX_WIDTH-1:0] RAM_A   = (next_state == S_HIT) ? index : addr[RAML:RAMR] ;//ram地址索引
+wire [INDEX_WIDTH-1:0] RAM_A   = (next_state == S_HIT) ? index_in : addr[RAML:RAMR] ;//ram地址索引
 wire [INDEX_DEPTH-1:0] RAM_D   = cache_r_data_i                                  ;//更新ram数据
 
 always@(*) begin
@@ -200,14 +200,14 @@ always@(posedge clk)begin
           r_data_o                <= RAM_Q[waynum];
       end
       S_AR:if(next_state==S_R)begin
-            cache_ar_valid_o  <= 0;
-            cache_r_ready_o  <= 1;
+          cache_ar_valid_o  <= 0;
+          cache_r_ready_o  <= 1;
           end
       S_R:if(next_state==S_HIT)begin
-              cache_r_ready_o     <= 0             ;
-              valid[waynum][index]<= 1             ;
-              r_data_o            <= cache_r_data_i;
-              r_data_valid_o      <= 1             ;
+          cache_r_ready_o     <= 0             ;
+          valid[waynum][index]<= 1             ;
+          r_data_o            <= cache_r_data_i;
+          r_data_valid_o      <= 1             ;
           end
       default:begin
       end
