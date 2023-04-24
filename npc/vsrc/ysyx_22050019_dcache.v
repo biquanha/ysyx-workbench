@@ -44,7 +44,7 @@ module ysyx_22050019_dcache#(
   input                              w_data_valid_i      ,     
   output reg                         w_data_ready_o      ,
   input     [DATA_WIDTH/8-1:0]       w_w_strb_i          ,     
-  input     [DATA_WIDTH-1:0]         w_data_o            ,   
+  input     [DATA_WIDTH-1:0]         w_data_i            ,   
   input                              b_ready_i           ,      
   output reg                         b_valid_o           ,
   output reg  [1:0]                  b_resp_o            , 
@@ -67,8 +67,8 @@ module ysyx_22050019_dcache#(
   input     [1:0]                    cache_r_resp_i      ,      
   input     [DATA_WIDTH-1:0]         cache_r_data_i
 );
-parameter TAGL     = R_ADDR_WIDTH-1                      ;//31
-parameter TAGR     = R_ADDR_WIDTH-TAG_WTH                ;//9
+parameter TAGL     = ADDR_WIDTH-1                        ;//31
+parameter TAGR     = ADDR_WIDTH-TAG_WIDTH                ;//9
 parameter INDEXL   = TAGR-1                              ;//8              
 parameter INDEXR   = TAGR-INDEX_WIDTH                    ;//3
 
@@ -77,6 +77,7 @@ parameter RAM_DEPTH= INDEX_DEPTH                         ;//64$pow(2,INDEX_WIDTH
 parameter RAML     = INDEX_WIDTH+OFFSET_WIDTH-1          ;//8
 parameter RAMR     = OFFSET_WIDTH                        ;//3
 
+wire [R_ADDR_WIDTH-1:0]  rw_addr_i = ar_addr_i|aw_addr_i ; 
 // 保存地址，miss后的写数据，偏移寄存器
 reg [ADDR_WIDTH-1:0]   addr  ;
 wire[INDEX_WIDTH-1:0]  index = addr[INDEXL:INDEXR];
@@ -87,8 +88,8 @@ reg                 valid[WAY_DEPTH-1:0][INDEX_DEPTH-1:0];
 reg                 dirty[WAY_DEPTH-1:0][INDEX_DEPTH-1:0];
 
 // wire类型传入的地址解析
-wire[TAG_WIDTH-1:0]    tag_in  = ar_addr_i[TAGL:TAGR]    ;
-wire[INDEX_WIDTH-1:0]  index_in= ar_addr_i[INDEXL:INDEXR];
+wire[TAG_WIDTH-1:0]    tag_in  = rw_addr_i[TAGL:TAGR]    ;
+wire[INDEX_WIDTH-1:0]  index_in= rw_addr_i[INDEXL:INDEXR];
 wire[OFFSET_WIDTH-1:0] OFFSET0 = 0                       ;//3'b0对于这里是持有怀疑态度的
 
 // 命中路的判断逻辑      0-1 两路
@@ -111,14 +112,14 @@ wire [DATA_WIDTH-1:0]  maskn   = (state == S_HIT) ? {{8{w_w_strb_i[7]}},{8{w_w_s
                                                                : 64'hffffffffffffffff                    ;//写掩码，目前是全位写，掩码在发送端处理了
 wire [INDEX_DEPTH-1:0] RAM_BWEN= ~maskn                                                                  ;//ram写掩码目前一样不用过多处理
 wire [INDEX_WIDTH-1:0] RAM_A   = (next_state == S_HIT)|(next_state == S_AW) ? index_in : addr[RAML:RAMR] ;//ram地址索引
-wire [INDEX_DEPTH-1:0] RAM_D   = cache_r_data_i|w_data_o                                                 ;//更新ram数据
+wire [INDEX_DEPTH-1:0] RAM_D   = cache_r_data_i|w_data_i                                                 ;//更新ram数据
 
 always@(*) begin
   if(rst)begin
     RAM_CEN[0] = 1;
     RAM_CEN[1] = 1;
   end
-  else if((state == S_IDLE)&(next_state == S_HIT)&(ar_valid_i)|(state == S_R)&(next_state == S_HIT)|(next_state == S_AW)|(w_data_valid_i))
+  else if((state == S_IDLE)&(next_state == S_HIT)&(ar_valid_i)|(state == S_R)&(next_state == S_HIT)|(next_state == S_AW)|(w_data_valid_i&w_data_ready_o))
   RAM_CEN[hit_waynum_i|waynum] = 0;
   else
   RAM_CEN[hit_waynum_i|waynum] = 1;
@@ -148,6 +149,7 @@ parameter S_AR   =2;
 parameter S_R    =3;
 parameter S_AW   =4;
 parameter S_W    =5;
+parameter S_B    =6;
 
 reg[15:0] state;
 reg[15:0] next_state;
@@ -173,10 +175,10 @@ always@(*) begin
     S_AW:if(cache_aw_valid_o&cache_aw_ready_i)next_state=S_W;
       else next_state=S_AW;
 
-    S_W:if(cache_w_data_ready_o&cache_w_data_valid_i)next_state=S_B;
+    S_W:if(cache_w_ready_o&cache_w_valid_i)next_state=S_B;
       else next_state=S_W;
 
-    S_B:if(cache_b_valid_i&cache_b_ready_o&cache_ar_ready_i)next_state=S_AR;
+    S_B:if(cache_b_valid_i&cache_b_ready_o)next_state=S_AR;
       else next_state=S_B;
 
     S_AR:if(cache_ar_valid&cache_ar_ready_i)next_state=S_R;
@@ -196,11 +198,15 @@ always@(posedge clk)begin
     aw_ready_o                    <= 1                                     ;
 		r_data_valid_o                <= 0                                     ;
 		r_data_o                      <= 0                                     ;
+    w_data_ready_o                <= 0                                     ;
+    b_valid_o                     <= 0                                     ;
+    b_resp_o                      <= 0                                     ;
     cache_ar_valid                <= 0                                     ;
     cache_ar_addr_o               <= 0                                     ;
 		cache_r_ready_o               <= 0                                     ;
     waynum                        <= 0                                     ;
     addr                          <= 0                                     ;
+
   end
   else begin
     case(state)
@@ -209,7 +215,7 @@ always@(posedge clk)begin
           aw_ready_o              <= 0                                     ;
           r_data_valid_o          <= 0                                     ; 
           waynum                  <= hit_waynum_i                          ;
-          addr                    <= {ar_addr_i[TAGL:INDEXR],OFFSET0}      ;
+          addr                    <= {rw_addr_i[TAGL:INDEXR],OFFSET0}      ;
           if(aw_valid_i&aw_ready_o) begin
           rw_control              <= 1                                     ;
           w_data_ready_o          <= 1                                     ;
@@ -218,18 +224,23 @@ always@(posedge clk)begin
         else if(next_state==S_AR)begin
           icache_wait()                                                    ;//多跑2个周期平衡
 					ar_ready_o              <= 0                                     ;
+          aw_ready_o              <= 0                                     ;
           waynum                  <= random                                ;
-          addr                    <= {ar_addr_i[TAGL:INDEXR],OFFSET0}      ;
+          addr                    <= {rw_addr_i[TAGL:INDEXR],OFFSET0}      ;
           valid[random][index_in] <= 0                                     ;
-          tag[random][index_in]   <= ar_addr_i[TAGL:TAGR]                  ;
+          tag[random][index_in]   <= rw_addr_i[TAGL:TAGR]                  ;
           cache_ar_valid          <= 1                                     ;
-          cache_ar_addr_o         <= {32'b0,ar_addr_i[TAGL:INDEXR],OFFSET0};
+          cache_ar_addr_o         <= {32'b0,rw_addr_i[TAGL:INDEXR],OFFSET0};
+          if(aw_valid_i&aw_ready_o) begin
+          rw_control              <= 1                                     ;
+          w_data_ready_o          <= 0                                     ;
+          end
         end
-        else if(next_state==S_Aw)begin
+        else if(next_state==S_AW)begin
 					ar_ready_o              <= 0                                     ;
           aw_ready_o              <= 0                                     ;
           waynum                  <= random                                ;
-          addr                    <= {ar_addr_i[TAGL:INDEXR],OFFSET0}      ;
+          addr                    <= {rw_addr_i[TAGL:INDEXR],OFFSET0}      ;
           valid[random][index_in] <= 0                                     ;
           if(aw_valid_i&aw_ready_o) begin
           rw_control              <= 1                                     ;
@@ -292,6 +303,9 @@ always@(posedge clk)begin
           valid[waynum][index]    <= 1                                     ;
           r_data_o                <= cache_r_data_i                        ;
           r_data_valid_o          <= 1                                     ;
+          if(rw_control) begin
+          w_data_ready_o          <= 1                                     ;
+          end
           end
       default:begin
       end
