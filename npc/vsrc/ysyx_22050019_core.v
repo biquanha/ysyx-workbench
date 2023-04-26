@@ -73,7 +73,7 @@ always@(*) begin
   stll_ar_ready = 0;
   stll_ar_rvalid= 0;
   end
-  else if(axi_dcache_ar_ready|axi_dcache_r_ready) begin
+  else if(axi_dcache_arbiter_ar_ready|axi_dcache_arbiter_r_ready|axi_dcache_aw_valid&axi_dcache_aw_ready|axi_dcache_w_ready|axi_dcache_b_ready&axi_dcache_b_ready) begin
     stll_ar_rvalid = 0 ;
     stll_ar_ready  = 0 ;
   end
@@ -323,13 +323,13 @@ wire [63:0] axi_lsu_dcache_r_data   ;
 wire        axi_dcache_aw_ready    = uncache ? 0 : axi_dcache_arbiter_aw_ready  ; 
 wire        axi_dcache_aw_valid    ;
 wire [63:0] axi_dcache_aw_addr     ;
-wire        axi_dcache_w_ready     ;
+wire        axi_dcache_w_ready     = uncache ? 0 : axi_dcache_arbiter_w_ready   ; 
 wire        axi_dcache_w_valid     ;
 wire [63:0] axi_dcache_w_data      ;
 wire [7:0]  axi_dcache_w_strb      ;
 wire        axi_dcache_b_ready     ;
-wire        axi_dcache_b_valid     ;
-wire [1:0]  axi_dcache_b_resp      ;
+wire        axi_dcache_b_valid     = uncache ? 0 : axi_dcache_arbiter_b_valid   ; 
+wire [1:0]  axi_dcache_b_resp      = uncache ? 0 : axi_dcache_arbiter_b_resp    ; 
 wire        axi_dcache_ar_ready    = uncache ? 0 : axi_dcache_arbiter_ar_ready  ; 
 wire        axi_dcache_ar_valid    ;
 wire [63:0] axi_dcache_ar_addr     ;
@@ -380,9 +380,9 @@ ysyx_22050019_dcache D_CACHE(
     .cache_aw_valid_o  ( axi_dcache_aw_valid  ),
     .cache_aw_ready_i  ( axi_dcache_aw_ready  ),
     .cache_aw_addr_o   ( axi_dcache_aw_addr   ),
-    .cache_w_ready_o   ( axi_dcache_w_ready   ),
-    .cache_w_valid_i   ( axi_dcache_w_valid   ),
-    .cache_w_data_i    ( axi_dcache_w_data    ),
+    .cache_w_ready_i   ( axi_dcache_w_ready   ),
+    .cache_w_valid_o   ( axi_dcache_w_valid   ),
+    .cache_w_data_o    ( axi_dcache_w_data    ),
     .cache_w_strb_o    ( axi_dcache_w_strb    ),
     .cache_b_ready_o   ( axi_dcache_b_ready   ),
     .cache_b_valid_i   ( axi_dcache_b_valid   ),

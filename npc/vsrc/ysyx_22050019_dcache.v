@@ -52,9 +52,9 @@ module ysyx_22050019_dcache#(
   output reg                         cache_aw_valid_o    ,       
   input                              cache_aw_ready_i    ,     
   output reg[R_ADDR_WIDTH-1:0]       cache_aw_addr_o     ,          
-  input                              cache_w_ready_o     ,     
-  output reg                         cache_w_valid_i     ,     
-  output reg[DATA_WIDTH-1:0]         cache_w_data_i      ,
+  input                              cache_w_ready_i     ,     
+  output reg                         cache_w_valid_o     ,     
+  output reg[DATA_WIDTH-1:0]         cache_w_data_o      ,
   output reg[DATA_WIDTH/8-1:0]       cache_w_strb_o      ,
   output reg                         cache_b_ready_o     ,          
   input                              cache_b_valid_i     ,
@@ -105,14 +105,14 @@ always@(posedge clk)begin//随机替换的替换策略
 end
 
 // ram的一些配置信息
-wire [INDEX_DEPTH-1:0] RAM_Q  [WAY_DEPTH-1:0]                                                            ;//读出的cache数据
-reg                    RAM_CEN[WAY_DEPTH-1:0]                                                            ;//为0有效，为1是无效（2个使能信号需要同时满足不然会读出随机数）使能信号控制
-wire                   RAM_WEN = (state == S_IDLE)&(next_state == S_HIT)|(next_state == S_AW)            ;//为0是写使能1是读使能，读写控制hit是读数据
+wire [INDEX_DEPTH-1:0] RAM_Q  [WAY_DEPTH-1:0]                                                                 ;//读出的cache数据
+reg                    RAM_CEN[WAY_DEPTH-1:0]                                                                 ;//为0有效，为1是无效（2个使能信号需要同时满足不然会读出随机数）使能信号控制
+wire                   RAM_WEN = (state == S_R)&(next_state == S_HIT)|(state == S_HIT)&w_data_valid_i ? 0 : 1 ;//为0是写使能1是读使能，读写控制hit是读数据
 wire [DATA_WIDTH-1:0]  maskn   = (state == S_HIT) ? {{8{w_w_strb_i[7]}},{8{w_w_strb_i[6]}},{8{w_w_strb_i[5]}},{8{w_w_strb_i[4]}},{8{w_w_strb_i[3]}},{8{w_w_strb_i[2]}},{8{w_w_strb_i[1]}},{8{w_w_strb_i[0]}}}
-                                                               : 64'hffffffffffffffff                    ;//写掩码，目前是全位写，掩码在发送端处理了
-wire [INDEX_DEPTH-1:0] RAM_BWEN= ~maskn                                                                  ;//ram写掩码目前一样不用过多处理
-wire [INDEX_WIDTH-1:0] RAM_A   = (next_state == S_HIT)|(next_state == S_AW) ? index_in : addr[RAML:RAMR] ;//ram地址索引
-wire [INDEX_DEPTH-1:0] RAM_D   = cache_r_data_i|w_data_i                                                 ;//更新ram数据
+                                                               : 64'hffffffffffffffff                         ;//写掩码，目前是全位写，掩码在发送端处理了
+wire [INDEX_DEPTH-1:0] RAM_BWEN= ~maskn                                                                       ;//ram写掩码目前一样不用过多处理
+wire [INDEX_WIDTH-1:0] RAM_A   = (next_state == S_HIT)|(next_state == S_AW) ? index_in : addr[RAML:RAMR]      ;//ram地址索引
+wire [INDEX_DEPTH-1:0] RAM_D   = cache_r_data_i|w_data_i                                                      ;//更新ram数据
 
 always@(*) begin
   if(rst)begin
@@ -120,9 +120,9 @@ always@(*) begin
     RAM_CEN[1] = 1;
   end
   else if((state == S_IDLE)&(next_state == S_HIT)&(ar_valid_i)|(state == S_R)&(next_state == S_HIT)|(next_state == S_AW)|(w_data_valid_i&w_data_ready_o))
-  RAM_CEN[hit_waynum_i|waynum] = 0;
+  RAM_CEN[hit_waynum_i|(next_state == S_AW) ? random : waynum] = 0;
   else
-  RAM_CEN[hit_waynum_i|waynum] = 1;
+  RAM_CEN[hit_waynum_i|(next_state == S_AW) ? random : waynum] = 1;
 end
 
 //实例化两块ram以及他们的命中逻辑的添加
@@ -175,7 +175,7 @@ always@(*) begin
     S_AW:if(cache_aw_valid_o&cache_aw_ready_i)next_state=S_W;
       else next_state=S_AW;
 
-    S_W:if(cache_w_ready_o&cache_w_valid_i)next_state=S_B;
+    S_W:if(cache_w_ready_i&cache_w_valid_o)next_state=S_B;
       else next_state=S_W;
 
     S_B:if(cache_b_valid_i&cache_b_ready_o)next_state=S_AR;
@@ -222,7 +222,7 @@ always@(posedge clk)begin
           end
         end
         else if(next_state==S_AR)begin
-          icache_wait()                                                    ;//多跑2个周期平衡
+//          icache_wait()                                                    ;//多跑2个周期平衡
 					ar_ready_o              <= 0                                     ;
           aw_ready_o              <= 0                                     ;
           waynum                  <= random                                ;
@@ -237,6 +237,7 @@ always@(posedge clk)begin
           end
         end
         else if(next_state==S_AW)begin
+          icache_wait()                                                    ;//多跑2个周期平衡
 					ar_ready_o              <= 0                                     ;
           aw_ready_o              <= 0                                     ;
           waynum                  <= random                                ;
@@ -278,12 +279,12 @@ always@(posedge clk)begin
       end
       S_AW:if(next_state==S_W)begin
           cache_aw_valid_o        <= 0                                     ;
-          cache_w_valid_i         <= 1                                     ;
+          cache_w_valid_o         <= 1                                     ;
           cache_w_strb_o          <= 8'hff                                 ;
-          cache_w_data_i          <= RAM_Q[waynum]                         ;
+          cache_w_data_o          <= RAM_Q[waynum]                         ;
         end
       S_W:if(next_state==S_B)begin
-          cache_w_valid_i         <= 0                                     ;
+          cache_w_valid_o         <= 0                                     ;
           cache_b_ready_o         <= 1                                     ;
           dirty[waynum][index]    <= 0                                     ;
           valid[waynum][index]    <= 0                                     ;
