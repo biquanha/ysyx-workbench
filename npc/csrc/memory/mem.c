@@ -23,6 +23,7 @@ static void out_of_bound(ll addr) {
 
 void difftest_skip_ref() {
   is_skip_ref = true;
+  //printf("difftest_skip_ref =");
 }
 //读mem
 extern "C" void pmem_read(ll raddr, ll *rdata)
@@ -39,7 +40,7 @@ extern "C" void pmem_read(ll raddr, ll *rdata)
    }
    //printf("pmem_read-,addr = %016llx  rdata = %016llx is_skip_ref= %d\n",raddr,*rdata,is_skip_ref);
    //printf("[Mimo - Read]: addr = %016llx data = %016llx\n", raddr, *rdata);
-   //if(raddr == 0x00000000a00003f8) debug_exit(1);
+   //if(raddr == 0xa000004c) debug_exit(1);
    // mimo设备访问
     *rdata=mmio_read((paddr_t)(raddr),8);
     return;

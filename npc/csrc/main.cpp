@@ -2,8 +2,10 @@
 // ============ verilator sim ===========
 #define MAX_SIM_TIME 15000000
 uint64_t sim_time = 0;
-unsigned long long debug_time = 0;
+unsigned long long sim_cycle= 0;
+unsigned long long debug_inst = 0;
 #define DEBUG_SKIP 0
+//361307
 // 一些导入的接口
 void init_device();
 
@@ -168,27 +170,31 @@ void difftest_exec_once()
     //防止递归失败的false设置，放在后面会被覆盖
     //is_skip_ref = false;
     //exec_once();
+
 //一个冒险的开关当开启这里时，会跳过连续访问外设的diff写reg覆盖，但会将访问后一条指令的结果直接写入参考模型，这是一个对正确性的隐患。（提升效果2~3倍）
     while(is_skip_ref){
     is_skip_ref = false;
     #ifdef CONFIG_ITRACE
     itrace_record(dut->now_addr);
 // 会增加一定的性能负担，且这个类型一旦溢出会导致程序被杀死
-//  debug_time++;
+//  debug_inst++;
 #endif
       while(difftest_ok == false){
       exec_once();
        }
       difftest_ok = false;
     }
+
     
     ref_difftest_regcpy(cpu_gpr, DIFFTEST_TO_REF);
     //printf("time-last-is_skip_ref= %d\n",is_skip_ref);
     //printf("%lx\n",cpu_gpr[32]);
+    //printf("yes %lx\n",cpu_gpr[32]);
     return;
   }
   else{
   //printf("nemu-is_skip_ref= %d\n",is_skip_ref);
+  //printf("no  %lx\n",cpu_gpr[32]);
   ref_difftest_exec(1);
   ref_difftest_regcpy(ref_regs, DIFFTEST_TO_DUT);
   //printf("is_skip_ref= %d\n",is_skip_ref);
@@ -198,10 +204,11 @@ void difftest_exec_once()
 }
 
 #endif
-
+void exec_once();
 void debug_exit(int status)
 {
-  printf("仿真周期=%llds\n", (long long)debug_time);
+printf("仿真时钟周期约为=%.3f m 有效指令=%lld k ipc=%.3f\n", (double)sim_cycle/1000000, debug_inst/1000, (double)debug_inst/sim_cycle);
+  exec_once();
 #ifdef CONFIG_GTKWAVE
   m_trace -> close();
 #endif
@@ -244,7 +251,7 @@ void cpu_reset()
   dut -> rst_n = 1;
   dut -> eval();
 #ifdef CONFIG_GTKWAVE
-  if(debug_time >= DEBUG_SKIP){
+  if(debug_inst >= DEBUG_SKIP){
   m_trace -> dump(sim_time++);
   }
 #endif
@@ -252,7 +259,7 @@ void cpu_reset()
   dut -> rst_n = 1;
   dut -> eval();
 #ifdef CONFIG_GTKWAVE
-  if(debug_time >= DEBUG_SKIP){
+  if(debug_inst >= DEBUG_SKIP){
   m_trace -> dump(sim_time++);
   }
 #endif
@@ -261,17 +268,21 @@ void cpu_reset()
 //cpu运行一次
 void exec_once()
 {
+#ifdef COUNT_IPC
+  sim_cycle++;
+#endif
+
   dut->clk = 0;
   dut -> eval();
 #ifdef CONFIG_GTKWAVE
-  if(debug_time >= DEBUG_SKIP){
+  if(debug_inst >= DEBUG_SKIP){
   m_trace -> dump(sim_time++);
   }
 #endif
   dut->clk = 1;
   dut -> eval();
 #ifdef CONFIG_GTKWAVE
-  if(debug_time >= DEBUG_SKIP){
+  if(debug_inst >= DEBUG_SKIP){
   m_trace -> dump(sim_time++);
   }
 #endif
@@ -312,7 +323,6 @@ int main(int argc, char** argv, char** env) {
   init_difftest();
 #endif
     while (1) {
-
       IFDEF(CONFIG_DEVICE, device_update());
 
       while(difftest_ok == false){
@@ -321,8 +331,11 @@ int main(int argc, char** argv, char** env) {
        difftest_ok = false;
 #ifdef CONFIG_ITRACE
     itrace_record(cpu_gpr[32]);
+    debug_inst++;
 #endif
 #ifdef CONFIG_DIFFTEST
+        // 遇到越界时候可以在这里打断点，对于错误的pc+4（适配仿真环境+保持尽可能多的数据）
+        //if(cpu_gpr[32] == (uint64_t)0x0000000080004f64) debug_exit(1);
         difftest_exec_once();
 #endif
     }
