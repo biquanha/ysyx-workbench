@@ -4,7 +4,7 @@
 uint64_t sim_time = 0;
 unsigned long long sim_cycle= 0;
 unsigned long long debug_inst = 0;
-#define DEBUG_SKIP 350000
+#define DEBUG_SKIP 0
 //361307
 // 一些导入的接口
 void init_device();
@@ -316,7 +316,7 @@ int main(int argc, char** argv, char** env) {
     exec_once();
     exec_once();
     exec_once();
-    exec_once();
+    //这一段的作用是将cpu的初始状态对齐到nemu中，所以在改进icache后，需要注意difftest肯也需要改进
 //    icache_exec = false;
     //difftest_ok = false;
 #ifdef CONFIG_DIFFTEST
