@@ -327,11 +327,13 @@ always@(posedge clk)begin
             end
           else if(next_state==S_HIT)begin
               cache_r_ready_o     <= 0                                  ;
-              valid[waynum][index]<= 1                                  ;
-              r_data              <= addr[3] ? cache_r_data_i : r_data  ;  
-              r_data_valid        <= 1                                  ;
+              valid[waynum][index]<= 1                                  ; 
               if(rw_control) begin
               w_data_ready_o      <= 1                                  ;
+              end
+              else begin
+              r_data              <= addr[3] ? cache_r_data_i : r_data  ; 
+              r_data_valid        <= 1                                  ;
               end
             end
 
@@ -346,7 +348,7 @@ assign cache_ar_valid_o = cache_ar_valid|next_state==S_AR;
 
 //与外部ifu访问的改善信号
 assign r_data_valid_o  = cache_r_ready_o&cache_r_valid_i&(cache_rw_len_o == 0)& ~rw_control|(state == S_HIT)&(~rw_control) ? 1 : r_data_valid;
-assign r_data_o        = cache_r_ready_o&cache_r_valid_i&(cache_rw_len_o == 0)& ~rw_control|(state == S_HIT)&(~rw_control) ? ((state == S_HIT) ? addr[3] ? RAM_Q[waynum][127:64] : RAM_Q[waynum][63:0] : (addr[3] ? cache_r_data_i : r_data)) : r_data;
+assign r_data_o        = cache_r_ready_o&cache_r_valid_i&(cache_rw_len_o == 0)& ~rw_control|(state == S_HIT)&(~rw_control) ? ((state == S_HIT) ? (addr[3] ? RAM_Q[waynum][127:64] : RAM_Q[waynum][63:0]) : (addr[3] ? cache_r_data_i : r_data)) : r_data;
 //仿真程序接入
 /*
 always@(posedge clk) begin

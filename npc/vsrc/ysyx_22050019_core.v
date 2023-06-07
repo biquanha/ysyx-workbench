@@ -87,6 +87,7 @@ ysyx_22050019_IF_ID IF_ID(
     .commite_o    ( commite_if_id),
     .if_id_stall_i( if_id_stall  ),
     .id_ex_stall_i( id_ex_stall  ),
+    .id_j_flush   ( inst_j       ),
     .pc_o         ( pc_ifu_id    ),
     .inst_o       ( inst_ifu_id  )
 );
@@ -123,9 +124,9 @@ ysyx_22050019_IDU IDU(
  .ram_re       (ram_re_id            ),
 
  .raddr1       (raddr1_id_regs       ),
- .rdata1       (rdata1_id_regs       ),
+ .rdata1       (rdata1_forwardimg       ),
  .raddr2       (raddr2_id_regs       ),
- .rdata2       (rdata2_id_regs       ),
+ .rdata2       (rdata2_forwardimg       ),
  .op1          (op1_id               ),
  .op2          (op2_id               ),
  .reg_we_o     (reg_we_id            ),
@@ -663,19 +664,33 @@ wire [63:0]  reg_wdata_wbu;
 /* verilator lint_off UNUSED */wire [63:0]csr_regs_diff_wbu[3:0];//验证用
 wire commite_mem_wb;
 wire mem_wb_stall;
+wire         reg_we_wb    ;
+wire [4:0]   reg_waddr_wb ;
+wire [63:0]  reg_wdata_wb ;
+
+ysyx_22050019_WBU WBU(
+    .reg_we_exu_lsu_i  ( reg_we_exu_lsu            ),
+    .reg_we_lsu_i      ( wen_lsu_reg               ),
+    .reg_waddr_exu_i   ( reg_waddr_exu_lsu         ),
+    .reg_waddr_lsu_i   ( waddr_lsu_reg             ),
+    .reg_wdata_lsu_i   ( wdata_lsu_wb              ),
+    .reg_wdata_csr_i   ( wdate_csr_lsu             ),
+    .reg_wdata_exu_i   ( wdata_reg_exu_lsu         ),
+    .reg_we_wbu_o      ( reg_we_wb                 ),
+    .reg_waddr_wbu_o   ( reg_waddr_wb              ),
+    .reg_wdata_wbu_o   ( reg_wdata_wb              )
+);
+
+
 ysyx_22050019_MEM_WB MEM_WB(
     .clk              ( clk                       ),
     .rst_n            ( rst_n                     ),
     .pc_i             ( pc_exu_mem                ),
     .inst_i           ( inst_exu_mem              ),
     .commite_i        ( ex_mem_stall ? 0 : commite_ex_mem|wen_lsu_reg|axi_lsu_sram_b_valid&axi_lsu_sram_b_ready),
-    .reg_we_exu_lsu_i ( reg_we_exu_lsu            ),
-    .reg_we_lsu_i     ( wen_lsu_reg               ),
-    .reg_waddr_exu_i  ( reg_waddr_exu_lsu         ),
-    .reg_waddr_lsu_i  ( waddr_lsu_reg             ),
-    .reg_wdata_lsu_i  ( wdata_lsu_wb              ),
-    .reg_wdata_csr_i  ( wdate_csr_lsu             ),
-    .reg_wdata_exu_i  ( wdata_reg_exu_lsu         ),
+    .reg_we_wbu_i     ( reg_we_wb                 ),
+    .reg_waddr_wbu_i  ( reg_waddr_wb              ),
+    .reg_wdata_wbu_i  ( reg_wdata_wb              ),
     .csr_regs_diff_i  ( csr_regs_diff_lsu         ),
 
 /* control */
@@ -692,29 +707,48 @@ ysyx_22050019_MEM_WB MEM_WB(
 
 //pipeline 总控制器模块
 ysyx_22050019_pipeline_Control pipe_control(
-    .lsu_stall_req ( lsu_stall_req ),
-    .pc_stall_o    ( pc_stall      ),
-    .if_id_stall_o ( if_id_stall   ),
-    .id_ex_stall_o ( id_ex_stall   ),
-    .ex_mem_stall_o( ex_mem_stall  ),
-    .mem_wb_stall_o( mem_wb_stall  )
+    .lsu_stall_req ( lsu_stall_req             ),
+    .pc_stall_o    ( pc_stall                  ),
+    .if_id_stall_o ( if_id_stall               ),
+    .id_ex_stall_o ( id_ex_stall               ),
+    .ex_mem_stall_o( ex_mem_stall              ),
+    .mem_wb_stall_o( mem_wb_stall              )
+);
+
+// 解决流水线数据冒险加入的前递单元
+wire [63:0] rdata1_forwardimg;
+wire [63:0] rdata2_forwardimg;
+
+ysyx_22050019_forwarding forwarding(
+    .reg_raddr_1_id      ( raddr1_id_regs      ),
+    .reg_raddr_2_id      ( raddr2_id_regs      ),
+    .reg_waddr_exu       ( reg_waddr_id_exu       ),
+    .reg_waddr_lsu       ( reg_waddr_wb       ),
+    .reg_wen_exu         ( reg_we_id_exu         ),
+    .reg_wen_lsu         ( reg_we_wb         ),
+    .reg_wen_wdata_exu_i ( wdata_ex_reg|wdate_csr_exu ),
+    .reg_wen_wdata_lsu_i ( reg_wdata_wb ),
+    .reg_r_data1_id_i    ( rdata1_id_regs    ),
+    .reg_r_data2_id_i    ( rdata2_id_regs    ),
+    .reg_r_data1_id__o   ( rdata1_forwardimg   ),
+    .reg_r_data2_id__o   ( rdata2_forwardimg   )
 );
 
 
 //寄存器组端口
 ysyx_22050019_regs REGS(
- .clk        (clk                      ),
- .now_pc     (pc                       ),         
- .wdata      (reg_wdata_wbu            ),
- .waddr      (reg_waddr_wbu            ),
- .wen        (reg_we_wbu               ),
+    .clk        (clk                           ),
+    .now_pc     (pc                            ),         
+    .wdata      (reg_wdata_wbu                 ),
+    .waddr      (reg_waddr_wbu                 ),
+    .wen        (reg_we_wbu                    ),
 
- .csr_regs_diff(csr_regs_diff_wbu      ),
- 
- .raddr1     (raddr1_id_regs           ),
- .raddr2     (raddr2_id_regs           ),
- .rdata1     (rdata1_id_regs           ),
- .rdata2     (rdata2_id_regs           )
+    .csr_regs_diff(csr_regs_diff_wbu           ),
+    
+    .raddr1     (raddr1_id_regs                ),
+    .raddr2     (raddr2_id_regs                ),
+    .rdata1     (rdata1_id_regs                ),
+    .rdata2     (rdata2_id_regs                )
 );
 
 endmodule
