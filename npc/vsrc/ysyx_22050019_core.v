@@ -23,7 +23,6 @@ wire [63:0]pc_ifu;
 wire [31:0]inst_ifu;
 
 wire pc_stall;
-wire ifu_ok;
 //fetch模块端口
 ysyx_22050019_IFU IFU
 (
@@ -44,7 +43,6 @@ ysyx_22050019_IFU IFU
     .inst_commite      (ifu_commite        ),
 // control
     .pc_stall_i        (pc_stall           ),
-    .ifu_ok_o          (ifu_ok             ),
 
     .inst_addr_o       (pc_ifu             ), // 传入下级模块的地址
     .inst_o            (inst_ifu           )
@@ -81,7 +79,6 @@ ysyx_22050019_IF_ID IF_ID(
     .clk          ( clk          ),
     .rst_n        ( rst_n        ),
     .commite_i    ( ifu_commite  ),
-    .ifu_ok_i     ( ifu_ok       ),
     .pc_i         ( pc_ifu       ),
     .inst_i       ( inst_ifu     ),
     .commite_o    ( commite_if_id),
@@ -162,19 +159,19 @@ wire [63:0]wdate_csr;
 
 wire [63:0]snpc_csr_id;
 ysyx_22050019_CSR CSR(
-    .clk            (clk                 ),
-    .rst_n          (rst_n               ),
-    .pc             (pc_ifu_id           ),
+    .clk             (clk                 ),
+    .rst_n           (rst_n               ),
+    .pc              (pc_ifu_id           ),
   
-    .csr_inst_type  (csr_inst_type_id_csr),
-    .csr_addr       (csr_addr_id_csr     ),
-    .csr_wen        (csr_wen_id_csr      ),
-    .rdata1_reg_csr (rdata1_id_regs      ),//从reg读到的数据
+    .csr_inst_type   (csr_inst_type_id_csr),
+    .csr_addr        (csr_addr_id_csr     ),
+    .csr_wen         (csr_wen_id_csr      ),
+    .rdata1_reg_csr  (rdata1_forwardimg   ),//从reg读到的数据
 
-    .snpc           (snpc_csr_id         ),
+    .snpc            (snpc_csr_id         ),
 
-    .csr_regs_diff  (csr_regs_diff       ),//csr to reg for diff
-    .wdate_csr_reg  (wdate_csr           )//向reg写的数据
+    .csr_regs_diff   (csr_regs_diff       ),//csr to reg for diff
+    .wdate_csr_reg   (wdate_csr           )//向reg写的数据
     
 
 );
@@ -708,6 +705,7 @@ ysyx_22050019_MEM_WB MEM_WB(
 //pipeline 总控制器模块
 ysyx_22050019_pipeline_Control pipe_control(
     .lsu_stall_req ( lsu_stall_req             ),
+    .forwarding_req( forwarding_stall          ),
     .pc_stall_o    ( pc_stall                  ),
     .if_id_stall_o ( if_id_stall               ),
     .id_ex_stall_o ( id_ex_stall               ),
@@ -718,20 +716,21 @@ ysyx_22050019_pipeline_Control pipe_control(
 // 解决流水线数据冒险加入的前递单元
 wire [63:0] rdata1_forwardimg;
 wire [63:0] rdata2_forwardimg;
-
+wire        forwarding_stall;
 ysyx_22050019_forwarding forwarding(
-    .reg_raddr_1_id      ( raddr1_id_regs      ),
-    .reg_raddr_2_id      ( raddr2_id_regs      ),
-    .reg_waddr_exu       ( reg_waddr_id_exu       ),
-    .reg_waddr_lsu       ( reg_waddr_wb       ),
-    .reg_wen_exu         ( reg_we_id_exu         ),
-    .reg_wen_lsu         ( reg_we_wb         ),
+    .reg_raddr_1_id      ( raddr1_id_regs             ),
+    .reg_raddr_2_id      ( raddr2_id_regs             ),
+    .reg_waddr_exu       ( reg_waddr_id_exu           ),
+    .reg_waddr_lsu       ( reg_waddr_wb               ),
+    .reg_wen_exu         ( reg_we_id_exu              ),
+    .reg_wen_lsu         ( reg_we_wb                  ),
     .reg_wen_wdata_exu_i ( wdata_ex_reg|wdate_csr_exu ),
-    .reg_wen_wdata_lsu_i ( reg_wdata_wb ),
-    .reg_r_data1_id_i    ( rdata1_id_regs    ),
-    .reg_r_data2_id_i    ( rdata2_id_regs    ),
-    .reg_r_data1_id__o   ( rdata1_forwardimg   ),
-    .reg_r_data2_id__o   ( rdata2_forwardimg   )
+    .reg_wen_wdata_lsu_i ( reg_wdata_wb               ),
+    .reg_r_data1_id_i    ( rdata1_id_regs             ),
+    .reg_r_data2_id_i    ( rdata2_id_regs             ),
+    .forwarding_stall_o  ( forwarding_stall           ),
+    .reg_r_data1_id__o   ( rdata1_forwardimg          ),
+    .reg_r_data2_id__o   ( rdata2_forwardimg          )
 );
 
 
