@@ -49,14 +49,17 @@ always @ (posedge clk) begin
     if(rst_n) begin
         rw_cnt <= 0;
     end
+    else if(jmp_flush_i) begin
+        rw_cnt <= 0     ;
+    end
     else if(rinc & winc) begin
         rw_cnt <= rw_cnt;
     end
     else if(winc) begin
-        rw_cnt <= rw_cnt - 2'b1;
+        rw_cnt <= rw_cnt + 2'b1;
     end
     else if(rinc) begin
-        rw_cnt <= rw_cnt + 2'b1;
+        rw_cnt <= rw_cnt - 2'b1;
     end
     else begin
         rw_cnt <= rw_cnt;
@@ -65,12 +68,12 @@ end
 
 // 根据pc_changed进行读地址使能变化的模块
 // read_fifo_control
-assign rinc = ~rempty && pc_changed;
+wire rinc = ~rempty && pc_changed;
 
 // 根据buffer状态和pc输出指令和指令有效使能
-assign inst_valid_o = pc_equal & ~rempty| rempty & r_valid_i & r_ready_o;
+assign inst_valid_o = pc_equal & ~rempty | ((pc_changed & ~jmp_flush_i) & rw_cnt != 2'b01)| rempty & r_valid_i & r_ready_o & ~jmp_flage;
 
-assign inst_o       = pc_i[3] ? pc_i [2] ? rdata[127:96] : rdata[95:64] : pc_i [2] ? rdata[63:32] : rdata[31:0];
+assign inst_o       = inst_valid_o ? (pc_i[3] ? pc_i [2] ? rdata[127:96] : rdata[95:64] : pc_i [2] ? rdata[63:32] : rdata[31:0]) : 0;//仿真调试bug用，后期删除
 //=========================  
 //=========================  
 // AXI buffer <=> icache交流接口逻辑
@@ -137,17 +140,17 @@ always@(posedge clk)begin
         rready          <= 1'b0;
       end
 
-      WAIT_READY:begin
-      if(jmp_flush_i) begin
-          jmp_flage     <= 1'b1;
-        end
+      WAIT_READY:begin  
       if(next_state==IDLE)begin
-        jmp_flage       <= 1'b0;
+        jmp_flage       <= 0;
         ar_valid        <= 1'b1;
         rready          <= 1'b0;
         rresp           <= r_resp_i;
       end
-      else begin
+      else begin 
+      if(jmp_flush_i) begin
+        jmp_flage       <= 1;
+      end 
         ar_valid        <= 1'b0;
         rready          <= 1;
       end
@@ -160,67 +163,67 @@ end
 
 // axi_interface
 assign ar_valid_o   = (state_reg == IDLE) ? ~wfull :0;
-assign ar_addr_o    = {(buffer_pc + {26'b0,rw_cnt}), 4'b0};
+assign ar_addr_o    = jmp_flush_i & (state_reg == IDLE) ? {pc_i[31:4],4'b0} : {(buffer_pc + {26'b0,rw_cnt}), 4'b0} ;
 
 assign r_ready_o    = rready;
 
 // write_fifo_control
-assign winc         = r_valid_i & r_ready_o;
-assign wdata        = r_data_i;
+wire winc         = r_valid_i & r_ready_o & ~jmp_flush_i & ~jmp_flage;//检测是否跳转，跳转的话本次cache访问无效
+wire [WIDTH-1:0] wdata        = r_data_i;
 //========================= 
 //=========================  
   // 同步fifo的读写逻辑逻辑
+/*
 wire               rinc  ;
 wire               winc  ; 
 wire [WIDTH-1:0]   wdata ;
 wire               wfull ;
 wire               rempty;
+*/
 wire [WIDTH-1:0]   rdata ;
   // 用localparam定义一个参数，可以在文件内使用
-    localparam ADDR_WIDTH = 1;
 
-    reg [ADDR_WIDTH:0] waddr;
-    reg [ADDR_WIDTH:0] raddr;
+    reg [2:0] waddr;
+    reg [2:0] raddr;
+  
     always @ (posedge clk) begin
-        if(~rst_n) begin
-            waddr <= 'b0;
+        if(rst_n) begin
+            waddr <= 0;
+        end 
+        else if( winc && ~wfull ) begin
+                waddr <= waddr + 1;
         end 
         else begin
-            if( winc && ~wfull ) begin
-                waddr <= waddr + 1'b1;
-            end 
-            else begin
                 waddr <= waddr;    
-            end 
         end 
     end 
 
     always @ (posedge clk) begin
-        if(~rst_n) begin
-            raddr <= 'b0;
+        if(rst_n) begin
+            raddr <= 0;
+        end 
+        else if(jmp_flush_i) begin
+                raddr <= waddr;
+        end 
+        else if( rinc && ~rempty ) begin
+                raddr <= raddr + 1;
         end 
         else begin
-            if( rinc && ~rempty ) begin
-                raddr <= raddr + 1'b1;
-            end 
-            else begin
                 raddr <= raddr;    
-            end 
         end 
     end 
-
-
-assign wfull  = (raddr == {~waddr[ADDR_WIDTH], waddr[ADDR_WIDTH-1:0]});
-assign rempty = (raddr == waddr);
+    
+wire wfull  = (raddr == {~waddr[2], waddr[1:0]});
+wire rempty = (raddr == waddr);
 
 // 带有 parameter 参数的例化格式    
 inst_buffer  buffer_regs 
     (
     .clk  ( clk                   ),
     .wenc ( winc                  ),
-    .waddr( waddr[ADDR_WIDTH:0] ), 
+    .waddr( waddr[1:0] ), 
     .wdata( wdata                 ),        
-    .raddr( raddr[ADDR_WIDTH:0] ), 
+    .raddr( (pc_changed & ~jmp_flush_i) ? raddr[1:0] + 2'b1 : raddr[1:0] ), 
     .rdata( rdata                 )     
 );
 //=========================    
