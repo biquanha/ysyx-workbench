@@ -44,7 +44,7 @@ wire pc_equal   = (buffer_pc == pc_i[31:4]);
 wire pc_changed = (buffer_pc != pc_i[31:4]);
 
 // 读写记数器
-reg [1:0]rw_cnt;
+reg rw_cnt;
 always @ (posedge clk) begin
     if(rst_n) begin
         rw_cnt <= 0;
@@ -56,10 +56,10 @@ always @ (posedge clk) begin
         rw_cnt <= rw_cnt;
     end
     else if(winc) begin
-        rw_cnt <= rw_cnt + 2'b1;
+        rw_cnt <= rw_cnt + 1'b1;
     end
     else if(rinc) begin
-        rw_cnt <= rw_cnt - 2'b1;
+        rw_cnt <= rw_cnt - 1'b1;
     end
     else begin
         rw_cnt <= rw_cnt;
@@ -71,7 +71,7 @@ end
 wire rinc = ~rempty && pc_changed;
 
 // 根据buffer状态和pc输出指令和指令有效使能
-assign inst_valid_o = pc_equal & ~rempty | ((pc_changed & ~jmp_flush_i) & rw_cnt != 2'b01)| rempty & r_valid_i & r_ready_o & ~jmp_flage;
+assign inst_valid_o = pc_equal & ~rempty | ((pc_changed & ~jmp_flush_i) & rw_cnt != 1'b1)| rempty & r_valid_i & r_ready_o & ~jmp_flage & ~jmp_flush_i;
 
 assign inst_o       = inst_valid_o ? (pc_i[3] ? pc_i [2] ? rdata[127:96] : rdata[95:64] : pc_i [2] ? rdata[63:32] : rdata[31:0]) : 0;//仿真调试bug用，后期删除
 //=========================  
@@ -183,8 +183,8 @@ wire               rempty;
 wire [WIDTH-1:0]   rdata ;
   // 用localparam定义一个参数，可以在文件内使用
 
-    reg [2:0] waddr;
-    reg [2:0] raddr;
+    reg [1:0] waddr;
+    reg [1:0] raddr;
   
     always @ (posedge clk) begin
         if(rst_n) begin
@@ -213,7 +213,7 @@ wire [WIDTH-1:0]   rdata ;
         end 
     end 
     
-wire wfull  = (raddr == {~waddr[2], waddr[1:0]});
+wire wfull  = (raddr == {~waddr[1], waddr[0]});
 wire rempty = (raddr == waddr);
 
 // 带有 parameter 参数的例化格式    
@@ -221,9 +221,9 @@ inst_buffer  buffer_regs
     (
     .clk  ( clk                   ),
     .wenc ( winc                  ),
-    .waddr( waddr[1:0] ), 
+    .waddr( waddr[0] ), 
     .wdata( wdata                 ),        
-    .raddr( (pc_changed & ~jmp_flush_i) ? raddr[1:0] + 2'b1 : raddr[1:0] ), 
+    .raddr( (pc_changed & ~jmp_flush_i) ? raddr[0] + 1'b1 : raddr[0] ), 
     .rdata( rdata                 )     
 );
 //=========================    
@@ -232,14 +232,14 @@ endmodule
 
 /**************RAM 子模块*************/
 module inst_buffer #(
-    parameter DEPTH = 4,
+    parameter DEPTH = 2,
     parameter WIDTH = 128)
 (
   input                     clk  , 
   input                     wenc ,
-  input [DEPTH-3:0]         waddr,  //深度对2取对数，得到地址的位宽。
+  input                     waddr,  //深度对2取对数，得到地址的位宽。
   input [WIDTH-1:0]         wdata,  //数据写入
-  input [DEPTH-3:0]         raddr,  //深度对2取对数，得到地址的位宽。
+  input                     raddr,  //深度对2取对数，得到地址的位宽。
   output[WIDTH-1:0]         rdata   //数据输出
 );
 
