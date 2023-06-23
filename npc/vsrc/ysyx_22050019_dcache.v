@@ -103,6 +103,20 @@ always@(posedge clk)begin//随机替换的替换策略
   else random<=random+1;
 end
 
+// 状态机信号
+reg[15:0] state;
+reg[15:0] next_state;
+
+parameter S_IDLE =0;
+parameter S_HIT  =1;
+parameter S_AR   =2;
+parameter S_R    =3;
+parameter S_AW   =4;
+parameter S_W    =5;
+parameter S_B    =6;
+
+reg cache_ar_valid;
+
 // ram的一些配置信息
 wire [127:0]           RAM_Q [WAY_DEPTH-1:0]                                                            ;//读出的cache数据
 wire                   RAM_CEN = 0                                                                      ;//为0有效，为1是无效（2个使能信号需要同时满足不然会读出随机数）使能信号控制
@@ -119,16 +133,9 @@ wire write_enable = (state == S_R)&(cache_r_valid_i&cache_r_ready_o)|(state == S
 assign  RAM_WEN[0] = waynum ? 1 :write_enable;
 assign  RAM_WEN[1] = waynum ? write_enable :1;
 
-parameter S_IDLE =0;
-parameter S_HIT  =1;
-parameter S_AR   =2;
-parameter S_R    =3;
-parameter S_AW   =4;
-parameter S_W    =5;
-parameter S_B    =6;
 
-reg[15:0] state;
-reg[15:0] next_state;
+
+
 
 always@(posedge clk) begin
   if(rst)state<=S_IDLE;
@@ -179,6 +186,14 @@ integer p;
 //import "DPI-C" function void icache_wait();
 always@(posedge clk)begin
   if(rst)begin
+    //初始化对比项
+    for( m=0;m<WAY_DEPTH;m=m+1)begin
+      for( p=0;p<INDEX_DEPTH;p=p+1)begin
+          tag[m][p]  <= 22'b0;
+	  			dirty[m][p]<= 1'b0;
+	  			valid[m][p]<= 1'b0;
+      end
+    end
     rw_control                    <= 0                                     ;
 		ar_ready_o                    <= 0                                     ;
     aw_ready_o                    <= 0                                     ;
@@ -193,14 +208,7 @@ always@(posedge clk)begin
     waynum                        <= 0                                     ;
     addr                          <= 0                                     ;
     cache_rw_len_o                <= 0                                     ;
-    //初始化对比项
-    for( m=0;m<WAY_DEPTH;m=m+1)begin
-      for( p=0;p<INDEX_DEPTH;p=p+1)begin
-          tag[m][p]<=0;
-	  			dirty[m][p]<=0;
-	  			valid[m][p]<=0;
-      end
-    end
+
   end
   else begin
     case(state)
@@ -341,7 +349,7 @@ end
 generate
   genvar i;
   for(i=0;i<WAY_DEPTH;i=i+1)begin
-  assign hit_wayflag[i]=((tag[i][index_in]==tag_in)&&valid[i][index_in]);
+  assign hit_wayflag[i]=((tag[i][index_in]==tag_in) && valid[i][index_in]);
       S011HD1P_X32Y2D128_BW S011HD1P_X32Y2D128_BW_U0
       (
         .Q(RAM_Q[i]),
@@ -356,7 +364,7 @@ generate
 endgenerate
 
 //axi的一些需要适配仲裁器的信号
-reg cache_ar_valid;
+
 assign cache_ar_valid_o = cache_ar_valid|next_state==S_AR;
 
 //与外部ifu访问的改善信号
