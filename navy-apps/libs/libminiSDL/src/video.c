@@ -4,53 +4,86 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+/*
+源图像和目标图像的像素数据是连续存储的。这意味着图像的每一行像素数据在内存中是连续的，没有间隔或间隔可以被忽略。
 
-extern void NDL_DrawRect(uint32_t *pixels, int x, int y, int w, int h);
-void SDL_BlitSurface(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect) 
+源图像和目标图像的像素格式相同，并且像素格式为 32 位或 8 位。这个优化代码片段针对这两种像素格式进行了优化。
+
+源图像和目标图像的像素行宽（pitch）是以字节为单位的。行宽是指每行像素数据占用的字节数，包括可能的填充字节或间隔。
+
+srcrect 和 dstrect 分别是源图像和目标图像的指定位置矩形。
+如果 srcrect 不为空，则表示只复制 srcrect 指定的源图像区域；
+如果 dstrect 不为空，则表示将复制的像素粘贴到 dstrect 指定的目标图像区域。如果它们都为空，则表示复制整个源图像到目标图像。
+优化前版本可以跑小程序，优化后跑不了小游戏是正常的，仅仅是图像错误，这里优化后可以加快pal很多
+*/
+void SDL_BlitSurface(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect)
 {
-    assert(dst && src);
-    assert(dst->format->BitsPerPixel == src->format->BitsPerPixel);
+  // 判断本体src和被粘贴体dst指针不为空且像素格式相同
+  assert(dst && src);
+  assert(dst->format->BitsPerPixel == src->format->BitsPerPixel);
 
-    if(srcrect)
-    {
-        int d_x = 0; 
-        int d_y = 0;
-        assert((srcrect->w > 0) && (srcrect->h > 0));
+  // 定义初始图像信息
+  int screen_w,screen_h,x_src,y_src,x_dst,y_dst;
 
-        if(dstrect != NULL)
-        {
-            d_x = dstrect->x;
-            d_y = dstrect->y;
-        }
-        for(int i = 0; i < srcrect->h; i++)
-        {
-            memcpy(dst->pixels + dst->format->BytesPerPixel*((d_y+i)*dst->w+d_x), src->pixels + src->format->BytesPerPixel*((srcrect->y+i)*src->w+srcrect->x), dst->format->BytesPerPixel* srcrect->w);
-        }
+  // srcrect源画布指定位置指针存在
+  if(srcrect){
+    screen_w = srcrect->w; screen_h = srcrect->h;
+    x_src = srcrect->x; y_src = srcrect->y; 
+  }
+  // 从头复制
+  else{
+    screen_w = src->w; screen_h = src->h;
+    x_src = 0; y_src = 0;
+  }
+  // dstrect目标画布指定位置指针存在
+  if (dstrect) {
+    x_dst = dstrect->x, y_dst = dstrect->y;
+  }
+  // 从头粘贴
+  else {
+    x_dst = 0; y_dst = 0;
+  }
 
-    }
-    else
-    {
-        assert((src->w <= dst->w) && (src->h <= dst->h));
+  // 对于像素开始粘贴（本版本使用前提）
+  if (src->format->BitsPerPixel == 32) {
+    uint32_t* pixels_src = (uint32_t*)src->pixels;
+    uint32_t* pixels_dst = (uint32_t*)dst->pixels;
+    size_t src_pitch = src->pitch / sizeof(uint32_t);  // 源图像每行的像素个数
+    size_t dst_pitch = dst->pitch / sizeof(uint32_t);  // 目标图像每行的像素个数
+  
+    size_t src_offset = y_src * src_pitch + x_src;
+    size_t dst_offset = y_dst * dst_pitch + x_dst;
+  
+    size_t row_size = screen_w * sizeof(uint32_t);  // 每行的字节数
+  
+    // 使用 memcpy 函数一次性复制整个图像的像素数据
+    memcpy(pixels_dst + dst_offset, pixels_src + src_offset, row_size * screen_h);
+  }
 
-        if(dstrect)
-        {
-            for(int i = 0; i < src->h; i++)
-            {
-                memcpy(dst->pixels + dst->format->BytesPerPixel*((dstrect->y+i)*dst->w+dstrect->x), src->pixels+src->format->BytesPerPixel*i*src->w, dst->format->BytesPerPixel* src->w);
-            }
+  // 只有8位的可以在pal可以，在bird中不行，可能是源和目标图像的像素格式不同导致的。若这个也错就可以改成与上面一样
+  else if (src->format->BitsPerPixel == 8) {
+    uint8_t* pixels_src = (uint8_t*)src->pixels;
+    uint8_t* pixels_dst = (uint8_t*)dst->pixels;
+    size_t src_pitch = src->pitch;  // 源图像每行的字节数
+    size_t dst_pitch = dst->pitch;  // 目标图像每行的字节数
+  
+    size_t src_offset = y_src * src_pitch + x_src;
+    size_t dst_offset = y_dst * dst_pitch + x_dst;
+  
+    size_t row_size = screen_w * sizeof(uint8_t);  // 每行的字节数
+    size_t num_rows = screen_h;  // 总行数
+  
+    // 使用 memcpy 函数一次性复制整个图像的像素数据
+    memcpy(pixels_dst + dst_offset, pixels_src + src_offset, dst_pitch * num_rows);
+  }
 
-        }
-        else
-        {
-            for(int i = 0; i < src->h; i++)
-            {
-                memcpy(dst->pixels + dst->format->BytesPerPixel*((i)*dst->w), src->pixels+src->format->BytesPerPixel*i*src->w, dst->format->BytesPerPixel* src->w);
-            }
-
-        } 
-    }
+  else{
+    printf("[SDL_BlitSurface] 使用的像素格式%d未实现\n",src->format->BitsPerPixel);
+    assert(0);
+  }
 }
 
+// 向指定位置写颜色，32和8需要分别讨论因为32位颜色直接写入8位dst->pixels中与实际的8位颜色不一样（这里主要影响能量条和部分字体）
 void SDL_FillRect(SDL_Surface *dst, SDL_Rect *dstrect, uint32_t color) 
 {
     int x = (dstrect == NULL ? 0      : dstrect->x);
@@ -69,48 +102,66 @@ void SDL_FillRect(SDL_Surface *dst, SDL_Rect *dstrect, uint32_t color)
     }
 }
 
-void SDL_UpdateRect(SDL_Surface *s, int x, int y, int w, int h) 
-{
-    if((x==0) && (y==0) && (w==0) && (h==0))
-    {
-        if(s->format->BitsPerPixel == 8)
-        {
-            uint32_t *realColor = malloc(4*s->h*s->w);
-            for (int i = 0; i < s->h; i++) 
-            {
-                for (int j = 0; j < s->w; j++) 
-                {
-                    uint8_t index = *(uint8_t *)(s->pixels + j + i * s->w);
-                    SDL_Color *color = &s->format->palette->colors[index];
-                    realColor[j+i*s->w] = ((uint32_t)0) | (color->r << 16) | (color->g << 8) | color->b;
-                }
-            }
-            NDL_DrawRect(realColor, 0, 0, s->w, s->h);
-            free(realColor);
-        }
-        else
-            NDL_DrawRect((uint32_t*)s->pixels, 0, 0, s->w, s->h);
-    }
-    else
-    {
-        if(s->format->BitsPerPixel == 8)
-        {
-            uint32_t *realColor = malloc(4*h*w);
-            for(int i = 0; i < h; i++)
-            {
-                for(int j = 0; j < w; j++)
-                {
-                    uint8_t index = *(uint8_t *)(s->pixels + (x+j) + (i+y) * s->w);
-                    SDL_Color *color = &s->format->palette->colors[index];
-                    realColor[j+i*w] = ((uint32_t)0) | (color->r << 16) | (color->g << 8) | color->b;
-                }
-            }
-            NDL_DrawRect(realColor, x, y, w, h);
-            free(realColor);
-        }
-        else
-            NDL_DrawRect((uint32_t*)s->pixels, x, y, w, h);
-    }
+/*
+ SDL_Surface 实质是一个矩形的像素内存
+ typedef struct {
+   uint32_t flags; // 不用管，用不着
+   SDL_PixelFormat *format; // 存储的像素格式，没那么用得着
+   int w, h; // 图像的宽高
+   uint16_t pitch; // 一行像素的长度（字节）
+   uint8_t *pixels; // 指向数据的指针
+ } SDL_Surface;
+ 
+ typedef struct {
+   SDL_Palette *palette;
+   uint8_t BitsPerPixel;
+   uint8_t BytesPerPixel;
+   uint8_t Rloss, Gloss, Bloss, Aloss;
+   uint8_t Rshift, Gshift, Bshift, Ashift;
+   uint32_t Rmask, Gmask, Bmask, Amask;
+ } SDL_PixelFormat;
+typedef struct{
+    Uint8 r;
+    Uint8 g;
+    Uint8 b;
+    Uint8 a;
+}SDL_Color;
+*/
+
+void SDL_UpdateRect(SDL_Surface *s, int x, int y, int w, int h) {
+  assert(s != NULL);
+  // 全零则更新写入的s中的默认位置
+  if (x == 0 && y == 0 && w == 0 && h == 0) {
+    w = s->w; h = s->h;
+  }
+  // 初始化内存空间用于储存转换后的数据
+  uint32_t *pixels = malloc(w * h * sizeof(uint32_t));
+  assert(pixels);
+
+  // 32位时可以直接将像素送过去因为argb各8bit是默认配置（真彩色数据）。
+  if (s->format->BitsPerPixel == 32) {
+    NDL_DrawRect((uint32_t*)s->pixels + y * s->w + x, x, y, w, h);
+  }
+
+  // 8位时需要调用调色盘来从新索引像素
+  else if (s->format->BitsPerPixel == 8) {
+    uint8_t *index = (uint8_t *)s->pixels;
+    SDL_Color color;
+
+    for (int i = 0; i < h; ++ i) 
+      for (int j = 0; j < w; ++ j) {
+        color = s->format->palette->colors[index[(y + i) * s->w + x + j]];
+        pixels[i * w + j] = ((color.a << 24) | (color.r << 16) | (color.g << 8) | color.b);
+      }
+
+    NDL_DrawRect(pixels, x, y, w, h);
+  }
+  else {
+    printf("[SDL_UpdateRect] 使用的像素格式%d未实现\n",s->format->BitsPerPixel);
+    assert(0);
+  }
+
+  if (pixels) free(pixels);
 }
 
 // APIs below are already implemented.
