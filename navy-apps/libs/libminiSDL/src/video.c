@@ -16,7 +16,6 @@ srcrect 和 dstrect 分别是源图像和目标图像的指定位置矩形。
 如果 dstrect 不为空，则表示将复制的像素粘贴到 dstrect 指定的目标图像区域。如果它们都为空，则表示复制整个源图像到目标图像。
 优化前版本可以跑小程序，优化后跑不了小游戏是正常的，仅仅是图像错误，这里优化后可以加快pal很多
 */
-
 void SDL_BlitSurface(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect)
 {
   // 判断本体src和被粘贴体dst指针不为空且像素格式相同
@@ -61,22 +60,22 @@ void SDL_BlitSurface(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_
     memcpy(pixels_dst + dst_offset, pixels_src + src_offset, row_size * screen_h);
   }
 
-  // 只有8位的可以在pal可以，在bird中不行，可能是源和目标图像的像素格式不同导致的。若这个也错就可以改成与上面一样
-  else if (src->format->BitsPerPixel == 8) {
-    uint8_t* pixels_src = (uint8_t*)src->pixels;
-    uint8_t* pixels_dst = (uint8_t*)dst->pixels;
-    size_t src_pitch = src->pitch;  // 源图像每行的字节数
-    size_t dst_pitch = dst->pitch;  // 目标图像每行的字节数
-  
-    size_t src_offset = y_src * src_pitch + x_src;
-    size_t dst_offset = y_dst * dst_pitch + x_dst;
-  
-    size_t row_size = screen_w * sizeof(uint8_t);  // 每行的字节数
-    size_t num_rows = screen_h;  // 总行数
-  
-    // 使用 memcpy 函数一次性复制整个图像的像素数据
-    memcpy(pixels_dst + dst_offset, pixels_src + src_offset, dst_pitch * num_rows);
+  // 只有8位的可以在pal可以，在bird中不行，可能是源和目标图像的像素格式不同导致的。若这个也错就可以改成与上面一样// 这一行跑pal也只能单层for循环
+else if (src->format->BitsPerPixel == 8) {
+  uint8_t* pixels_src = (uint8_t*)src->pixels;
+  uint8_t* pixels_dst = (uint8_t*)dst->pixels;
+  size_t src_pitch = src->pitch;  // 源图像每行的字节数
+  size_t dst_pitch = dst->pitch;  // 目标图像每行的字节数
+
+  for (int i = 0; i < screen_h; ++i) {
+    // 计算源和目标图像每行的指针偏移量
+    size_t src_offset = (y_src + i) * src_pitch + x_src;
+    size_t dst_offset = (y_dst + i) * dst_pitch + x_dst;
+
+    // 使用 memcpy 函数一次性复制整行的像素数据
+    memcpy(pixels_dst + dst_offset, pixels_src + src_offset, screen_w);
   }
+}
 
   else{
     printf("[SDL_BlitSurface] 使用的像素格式%d未实现\n",src->format->BitsPerPixel);

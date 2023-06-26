@@ -11,9 +11,12 @@ const char *regs[] = {
 // 打印寄存器的值
 void isa_reg_display() {
     for (int i = 0; i < 32; i++){
-        printf("%s:%lx", *(regs + i),cpu.gpr[i]);
-        printf((i + 1) % 4 == 0 ?"\n":" ");
+        printf("%s(%d):%lx\n", *(regs + i),i,cpu.gpr[i]);
     }
+    printf("mtvec  (33):%lx\n",cpu.csr[0]);
+    printf("mepc   (34):%lx\n",cpu.csr[1]);
+    printf("mstatus(35):%lx\n",cpu.csr[2]);
+    printf("mcaurse(36):%lx\n",cpu.csr[3]);
 }
 // 通过名字获取寄存器的值
 word_t isa_reg_str2val(const char *s, bool *success) {
