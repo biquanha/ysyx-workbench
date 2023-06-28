@@ -26,19 +26,19 @@ static struct rule {
   const char *regex;
   int token_type;
 } rules[] = {
-  {" +", TK_NOTYPE},    // spaces
-  {"\\+", '+'},         // +
-  {"\\-", '-'},         // -
-  {"\\*", '*'},         // *
-  {"\\/", '/'},         // /
-  {"\\(", '('},         // (
-  {"\\)", ')'},         // )
-  {"==", TK_EQ},				// ==
-  {"!=", TK_NOTEQ},			// !=
-  {"&&", TK_LOGAND},		// &&
-  {"0x[0-9a-fA-F]+", TK_HEXNUM},	// 16-based number
-  {"[0-9]+", TK_DECNUM}, 			// 10-based number
-  {"\\$\\S+", TK_REG}			    // register
+  {" +", TK_NOTYPE},            // spaces
+  {"\\+", '+'},                 // +
+  {"\\-", '-'},                 // -
+  {"\\*", '*'},                 // *
+  {"\\/", '/'},                 // /
+  {"\\(", '('},                 // (
+  {"\\)", ')'},                 // )
+  {"==", TK_EQ},				        // ==
+  {"!=", TK_NOTEQ},			        // !=
+  {"&&", TK_LOGAND},		        // &&
+  {"0x[0-9a-fA-F]+", TK_HEXNUM},// 16-based number
+  {"[0-9]+", TK_DECNUM}, 			  // 10-based number
+  {"\\$\\S+", TK_REG}			      // register
 };
 
 #define NR_REGEX ARRLEN(rules)
@@ -210,13 +210,15 @@ static uint64_t eval(int p, int q, bool *success)
       if (*success == false) return 0;
     int op = -1;
     int par = 0;
-    for (int i = p; i <= q; ++i) {
+    for (int i = p; i <= q; i++) {
       if (tokens[i].type == '(') ++par;
       if (tokens[i].type == ')') --par;
       if (par == 0) {
           if (token_rank[tokens[i].type] == 0) continue;
           // Compare the level of operators, find the last lowest one.
-          if (op == -1 || token_rank[tokens[i].type] >= token_rank[tokens[op].type]) op = i;
+          if (op == -1 || token_rank[tokens[i].type] >= token_rank[tokens[op].type]) {op = i;
+			    printf("主运算符 %d temple %s.\n", i, rules[i].regex);
+          }
       }
     }
     // printf("Eval(%d, %d): 主运算符 在 %d.\n", p, q, op);
