@@ -85,17 +85,22 @@ size_t fs_read(int fd, const void *buf, size_t len){
   size_t len_t = 0;
   // 如果有特殊的读取方式
   // 例如串口、显存、键盘等事件、VGA信息
-  if (file_table[fd].read) {
+  if (file_table[fd].read != NULL) {
     len_t = file_table[fd].read((void *)buf, file_table[fd].open_offset, len);
     file_table[fd].open_offset += len_t;
   }
   else{
-  //如果len的结果超过了文件的总大小，返回实际能读到的值的数量(为了从中间读取的情况)
-  len_t = file_table[fd].open_offset + len <= file_table[fd].size ? len : (file_table[fd].size - file_table[fd].open_offset);
-  
-  // 写入的地址为该文件的地址+offset
-  ramdisk_read((void *) buf, file_table[fd].disk_offset + file_table[fd].open_offset, len_t);
-  file_table[fd].open_offset += len_t;
+    //如果len的结果超过了文件的总大小，返回实际能读到的值的数量(为了从中间读取的情况)
+    if(((file_table[fd].open_offset + len) <= (file_table[fd].size))){
+      len_t = len;
+    }
+    else {
+      len_t = (file_table[fd].size - file_table[fd].open_offset);
+    }
+    
+    // 写入的地址为该文件的地址+offset
+    ramdisk_read((void *) buf, file_table[fd].disk_offset + file_table[fd].open_offset, len_t);
+    file_table[fd].open_offset += len_t;
   }
   return len_t;
 }
@@ -113,13 +118,18 @@ size_t fs_write(int fd, const void *buf, size_t len){
     file_table[fd].open_offset += len_t;
   }
   else{
-  // write的len+open_offset不能超过文件大小
-  assert(file_table[fd].open_offset + len <= file_table[fd].size);
+    //如果len的结果超过了文件的总大小，在写时是个错误的实现
+    if(((file_table[fd].open_offset + len) <= (file_table[fd].size))){
+      len_t = len;
+    }
+    else {
+      panic("写文件越界");
+      len_t = (file_table[fd].size - file_table[fd].open_offset);
+    }
 
-  //写入偏移量为总偏移量+内部偏移量
-  ramdisk_write(buf, file_table[fd].disk_offset + file_table[fd].open_offset, len);
-  len_t = len;
-  file_table[fd].open_offset += len_t;
+    //写入偏移量为总偏移量+内部偏移量
+    ramdisk_write(buf, file_table[fd].disk_offset + file_table[fd].open_offset, len_t);
+    file_table[fd].open_offset += len_t;
   }
 
   return len_t;
@@ -143,11 +153,10 @@ size_t fs_lseek(int fd, size_t offset, int whence){
     
     // 从文件末尾开始找(暂时只用第一个情况)
     case SEEK_END:
-      file_table[fd].open_offset = file_table[fd].size + offset;
+      file_table[fd].open_offset = file_table[fd].size - offset;
       break;
     default:
-  Log("fs_lseek error");
-  assert(0);
+    panic("fs_lseek error");
   }
   return file_table[fd].open_offset;
 }
