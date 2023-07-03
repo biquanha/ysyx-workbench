@@ -4,7 +4,7 @@
 uint64_t sim_time = 0;
 unsigned long long sim_cycle= 0;
 unsigned long long debug_inst = 0;
-#define DEBUG_SKIP 590500
+#define DEBUG_SKIP 0
 //361307
 // 一些导入的接口
 void init_device();
@@ -96,10 +96,20 @@ void (*ref_difftest_regcpy)(void *dut, bool direction) = NULL;
 void (*ref_difftest_exec)(uint64_t n) = NULL;
 void (*ref_difftest_raise_intr)(uint64_t NO) = NULL;
 
-
+const char* am_home;
 void init_difftest() {
+  const char* nemu_home = getenv("NEMU_HOME");
+  // 确保环境变量存在
+  if (nemu_home == NULL) {
+      printf("Error: Environment variable NEMU_HOME not set\n");
+      return;
+  }
+  char ref_so_file[256]; // 定义一个足够大的字符数组来存储路径
+  // 将 am_home 的值拷贝到 image_path
+  strcpy(ref_so_file, nemu_home);
+  // 进行路径拼接
+  strcat(ref_so_file, "/build/riscv64-nemu-interpreter-so");
   printf("diff_init   ok\n");
-  char ref_so_file[]="/home/zyx/ysyx-workbench/nemu/build/riscv64-nemu-interpreter-so";
   assert(ref_so_file != NULL);
 
   void *handle;
@@ -225,7 +235,17 @@ printf("仿真时钟周期约为=%.3f m 有效指令=%lld k ipc=%.3f\n", (double
 //将指令读入到mem中(附带打印内存功能)
 void load_image()
 {
-  char image_path[] = "/home/zyx/ysyx-workbench/npc/1.bin";
+  const char* am_home = getenv("AM_HOME");
+  // 确保环境变量存在
+  if (am_home == NULL) {
+      printf("Error: Environment variable AM_HOME not set\n");
+      return;
+  }
+  char image_path[256]; // 定义一个足够大的字符数组来存储路径
+  // 将 am_home 的值拷贝到 image_path
+  strcpy(image_path, am_home);
+  // 进行路径拼接
+  strcat(image_path, "/../npc/1.bin");
   assert(image_path != NULL);
   FILE *fp = fopen(image_path, "rb");
   assert(fp);
