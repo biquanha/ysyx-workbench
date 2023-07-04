@@ -1,0 +1,14 @@
+{
+    "files.associations": {
+        "readline.h": "c",
+        "reg.h": "c",
+        "isa.h": "c",
+        "array": "c",
+        "bitset": "c",
+        "string_view": "c",
+        "initializer_list": "c",
+        "regex": "c",
+        "utility": "c",
+        "files.h": "c"
+    }
+}
