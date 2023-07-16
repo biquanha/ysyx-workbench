@@ -26,5 +26,5 @@ image: $(IMAGE).elf
 #NPC_HOME = /home/xin/.ssh/ysyx-workbench/npc
 
 run: image
-	cp $(IMAGE).bin $(AM_HOME)/../npc/1.bin
-	$(MAKE) -j 16 -C $(AM_HOME)/../npc sim
+	$(MAKE) -C $(AM_HOME)/../npc clean
+	$(MAKE) -C $(AM_HOME)/../npc sim IMG=$(IMAGE).bin

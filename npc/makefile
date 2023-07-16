@@ -32,6 +32,10 @@ CFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\"" -O3 -MMD -Wall
 CFLAGS += $(INCFLAGS)
 LIBS += $(shell llvm-config --libs) 
 LDFLAGS += -lSDL2 -lSDL2_image -lreadline -ldl -pie -fPIE $(LIBS)
+
+#loadbin
+IMG ?=
+
 #bin检查3者更新然后构建verilator编译规则
 $(BIN): $(VSRCS) $(CSRCS)
 	@rm -rf $(OBJ_DIR)

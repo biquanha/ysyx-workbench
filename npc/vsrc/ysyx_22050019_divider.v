@@ -260,9 +260,9 @@ always @(*) begin
     IDLE: begin
       if (div_valid) begin
         if (div_zero | div_of) begin
-            quotient_next[127:64] = 0;
+          quotient_next[127:64] = 0;
           quotient_next[63:0] = result_exception;
-          next_state          = FINISH;
+          next_state          = IDLE;
         end
         else begin
           next_state = DO_DIV;
@@ -389,6 +389,6 @@ ysyx_22050019_mux #( .NR_KEY(8), .KEY_LEN(8), .DATA_LEN(64)) mux_out
 // 输出控制
 assign result_ok  = (state == FINISH);
 assign div_stall  = (state == IDLE && next_state == DO_DIV) | (state == DO_DIV);
-assign div_out    = (state == FINISH) ? result_next : 0;
+assign div_out    = (state == FINISH ) ? result_next : (div_zero | div_of) ? result_exception : 0;
 
 endmodule

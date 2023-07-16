@@ -20,10 +20,11 @@ extern "C" void get_regs(const svOpenArrayHandle r)
 
 //Ebreak
 void debug_exit(int status);
+bool ebreak_ok = false;
 void ebreak()
 {
-  printf("%lx,%lx\n",cpu_gpr[10],dut->now_addr) ;
-  debug_exit(cpu_gpr[10]);
+  ebreak_ok = true;
+  
 }
 // 同步总线访问
 #ifdef CONFIG_ITRACE
@@ -135,7 +136,7 @@ void init_difftest() {
   ref_difftest_memcpy(MEM_BASE, pmem, img_size, DIFFTEST_TO_REF);
   ref_difftest_regcpy(cpu_gpr, DIFFTEST_TO_REF);
 }
-
+void exec_once();
 void checkregs(uint64_t *ref_regs)
 {
   IFDEF(DEBUG_DIFFTRACE, printf("diff_log: Difftest pc = 0x%016lx inst = 0x%016x\n", cpu_gpr[32],dut->now_inst));
@@ -166,13 +167,13 @@ void checkregs(uint64_t *ref_regs)
       printf("mstatus %02d: dut = 0x%016lx, ref = 0x%016lx\n", 35, cpu_gpr[35], ref_regs[35]);
             if(cpu_gpr[33] != ref_regs[33]) printf(COLOR_RED); else printf(COLOR_NONE);
       printf("mcause  %02d: dut = 0x%016lx, ref = 0x%016lx\n", 36, cpu_gpr[36], ref_regs[36]);
+      exec_once();
       debug_exit(1);
     }
   }
 }
 
 uint64_t ref_regs[36];
-void exec_once();
 void difftest_exec_once()
 {
   if (is_skip_ref) {
@@ -218,16 +219,23 @@ void exec_once();
 void debug_exit(int status)
 {
 printf("仿真时钟周期约为=%.3f m 有效指令=%lld k ipc=%.3f\n", (double)sim_cycle/1000000, debug_inst/1000, (double)debug_inst/sim_cycle);
-  exec_once();
+  
 #ifdef CONFIG_GTKWAVE
   m_trace -> close();
 #endif
 #ifdef CONFIG_ITRACE
   if (status != 0) itrace_output();
 #endif
-  if (status == 0) puts("\33[1;32mSim Result: HIT GOOD TRAP\33[0m");
-  else puts("\33[1;31mSim Result: HIT BAD TRAP\33[0m");
+  if (status == 0) 
+  {
+  puts("\33[1;32mSim Result: HIT GOOD TRAP\33[0m");
   exit(EXIT_SUCCESS);
+  }
+  else 
+  {
+  puts("\33[1;31mSim Result: HIT BAD TRAP\33[0m");
+  exit(EXIT_FAILURE);
+  }
 
 }
 
@@ -235,24 +243,19 @@ printf("仿真时钟周期约为=%.3f m 有效指令=%lld k ipc=%.3f\n", (double
 //将指令读入到mem中(附带打印内存功能)
 void load_image()
 {
-  const char* am_home = getenv("AM_HOME");
+  const char* IMG = getenv("IMG");
   // 确保环境变量存在
-  if (am_home == NULL) {
-      printf("Error: Environment variable AM_HOME not set\n");
+  if (IMG == NULL) {
+      printf("Error: Environment variable IMG not set\n");
       return;
   }
-  char image_path[256]; // 定义一个足够大的字符数组来存储路径
-  // 将 am_home 的值拷贝到 image_path
-  strcpy(image_path, am_home);
-  // 进行路径拼接
-  strcat(image_path, "/../npc/1.bin");
-  assert(image_path != NULL);
-  FILE *fp = fopen(image_path, "rb");
+  assert(IMG != NULL);
+  FILE *fp = fopen(IMG, "rb");
   assert(fp);
   fseek(fp, 0, SEEK_END);
   img_size = ftell(fp);
   fseek(fp, 0, SEEK_SET);
-  printf("The image is %s, size = %lld\n", image_path, img_size);
+  printf("The image is %s, size = %lld\n", IMG, img_size);
   int ret = fread(pmem, img_size, 1, fp);
   fclose(fp);
   assert(ret);
@@ -348,10 +351,16 @@ int main(int argc, char** argv, char** env) {
       exec_once();
        }
        difftest_ok = false;
+       //debug_exit(1);
 #ifdef CONFIG_ITRACE
     itrace_record(cpu_gpr[32]);
     debug_inst++;
 #endif
+       if(ebreak_ok){
+        exec_once();
+        printf("ebreak:%lx,%lx\n",cpu_gpr[10],dut->now_addr) ;
+        debug_exit(cpu_gpr[10]);
+       }
 #ifdef CONFIG_DIFFTEST
         // 遇到越界时候可以在这里打断点，对于错误的pc+4（适配仿真环境+保持尽可能多的数据）
         //if(cpu_gpr[32] == (uint64_t)0x0000000080004f64) debug_exit(1);

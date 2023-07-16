@@ -19,9 +19,10 @@ wire  op_slt      = alu_sel [4] ;
 wire  op_sltu     = alu_sel [5] ;
 
 // 把移位输入复用的控制信号(op2)
-wire  op_shamt    = {op_slli_64|op_srli_64|op_srai_64} ;
+wire  op_shamt    = {op_sll_64|op_slli_64|op_srli_64|op_srai_64} ;
 wire  data_shamt  = op_shamt ? op_2[5] : 1'b0;
 
+wire  op_sll_64   = alu_sel [9] ;
 wire  op_slli_64  = alu_sel [10];
 wire  op_srli_64  = alu_sel [14];
 wire  op_srai_64  = alu_sel [18];
@@ -45,7 +46,7 @@ wire  op_and      = alu_sel [6] ;
 wire  op_or       = alu_sel [7] ;
 wire  op_xor      = alu_sel [8] ;
 
-wire  op_sll_64   = alu_sel [9] ;
+
 wire  op_slli_32  = alu_sel [11];
 wire  op_sll_32   = alu_sel [12];
 
@@ -143,10 +144,11 @@ ysyx_22050019_divider divider(
 assign alu_stall = mult_stall    | div_stall;
 assign alu_ok    = result_ok_mul | result_ok_div;
 // alu的控制信号译码（用宏定义方便添加）---(实际上还是例化，端口不能写表达式，后期要删掉不然dc出网表报error)
+wire [63:0]result_dm = mult_out | div_out;
 ysyx_22050019_mux #( .NR_KEY(`LEN+1-13), .KEY_LEN(`LEN+1-13), .DATA_LEN(64) ) mux_alu_result
 (
   .key         (alu_sel[20:0]), 
-  .default_out (mult_out | div_out),
+  .default_out (result_dm),
   .lut         ({
                  21'b100000000000000000000,{{32{sra[31]}},sra[31:0]},
                  21'b010000000000000000000,{{32{sra[31]}},sra[31:0]},

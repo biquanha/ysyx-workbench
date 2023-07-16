@@ -83,7 +83,9 @@ end
 //=====================================================================
 //inst，设置了捕捉没实现的csr指令
 always @(*) begin
-  if (inst_i == 32'b00000000000100000000000001110011)
+  if (inst_i == 32'h100073) begin
+    $display("pc %x",pc_i);
     ebreak();
+  end
 end
 endmodule

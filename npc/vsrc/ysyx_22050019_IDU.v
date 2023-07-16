@@ -121,7 +121,7 @@ wire sltu = op_r&&rv32_funct3_011;
 // 与非异或指令的实现，通过与门或门等门电路实现
 wire AND  = op_r&&rv32_funct3_111&&(~rv32_funct7_000_0001);
 wire andi = op_i&&rv32_funct3_111;
-wire OR   = op_r&&rv32_funct3_110;
+wire OR   = op_r&&rv32_funct3_110&&(~rv32_funct7_000_0001);
 wire ori  = op_i&&rv32_funct3_110;
 wire xor0 = op_r&&rv32_funct3_100&&rv32_funct7_000_0000;
 wire xori = op_i&&rv32_funct3_100;
