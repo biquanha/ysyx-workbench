@@ -5,6 +5,7 @@
 !*.mk
 !*.[cSh]
 !*.v
+!rv_test.sh
 !*.cc
 !*.cpp
 build/
