@@ -2,7 +2,7 @@ RESULT=.result
 touch $RESULT
 
 # 列出所有的 .bin 文件路径，并保存到变量 files 中
-files=$NEMU_HOME/rv_test/rv64ui-p-auipc.bin
+files=$NEMU_HOME/rv_test/*.bin
 
 for f in $files
 do
