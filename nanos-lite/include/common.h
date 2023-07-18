@@ -13,6 +13,6 @@
 #include <debug.h>
 
 // 专门用于syscall的工具strace
-#define SYSCALL_PRINTF
+//#define SYSCALL_PRINTF
 
 #endif
