@@ -80,6 +80,7 @@ int fs_open(const char *pathname, int flags, int mode){
 // 注意每次读完需要将open_offset加上本次的offset
 size_t fs_read(int fd, const void *buf, size_t len){
   //fd判断是否读取在正确区间
+  //printf("fd=%d",fd);
   assert(!(fd <2 ||fd>= sizeof(file_table) / sizeof(Finfo)));//查手册1号文件不能读，这个系统肯没有这个限制，多此一举吧
 
   size_t len_t = 0;

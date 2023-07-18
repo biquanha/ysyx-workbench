@@ -32,64 +32,64 @@ void do_syscall(Context *c) {
   switch (a[0]) {
     case SYS_exit:
 #ifdef SYSCALL_PRINTF
-      Log("系统调用 syscall SYS_exit.");
+      printf("系统调用 syscall SYS_exit   . %d %d %d %d\n",a[0],a[1],a[2],a[3]);
 #endif
-      //naive_uload(NULL, (const char *)"/bin/menu"); 
+      //naive_uload(NULL, (const char *)" bin/menu"); 
       halt(a[1]);
       break;
 
     case SYS_yield:
 #ifdef SYSCALL_PRINTF
-      Log("系统调用 syscall SYS_yield.");
+      printf("系统调用 syscall SYS_yield  . %d %d %d %d",a[0],a[1],a[2],a[3]);
 #endif
       yield();
       break;
       
     case SYS_open :
 #ifdef SYSCALL_PRINTF
-      Log("系统调用 syscall SYS_open.");
+      printf("系统调用 syscall SYS_open   . %d %d %d %d",a[0],a[1],a[2],a[3]);
 #endif
       a[4] = fs_open(( char *)a[1], a[2], a[3]);
       break;
 
     case SYS_read:
 #ifdef SYSCALL_PRINTF
-      Log("Encount syscall SYS_read.");
+      printf("系统调用 syscall SYS_read   . %d %d %d %d",a[0],a[1],a[2],a[3]);
 #endif
       a[4] = fs_read(a[1], (const void *)a[2], a[3]);
       break;
 
     case SYS_write:
 #ifdef SYSCALL_PRINTF
-      Log("系统调用 syscall SYS_write.");
+      printf("系统调用 syscall SYS_write  . %d %d %d %d",a[0],a[1],a[2],a[3]);
 #endif
       a[4] = fs_write(a[1], (void *)a[2], a[3]);
       break;
 
     case SYS_close:
 #ifdef SYSCALL_PRINTF
-      Log("系统调用 syscall SYS_close.");
+      printf("系统调用 syscall SYS_close  . %d %d %d %d",a[0],a[1],a[2],a[3]);
 #endif
       a[4] = fs_close(a[1]);
       break;
 
     case SYS_lseek:
 #ifdef SYSCALL_PRINTF
-      Log("系统调用 syscall SYS_lseek.");
+      printf("系统调用 syscall SYS_lseek  . %d %d %d %d",a[0],a[1],a[2],a[3]);
 #endif
       a[4] = fs_lseek(a[1], a[2], a[3]);
       break;
 
     case SYS_brk:
 #ifdef SYSCALL_PRINTF
-      Log("系统调用 syscall SYS_brk.");
+      printf("系统调用 syscall SYS_brk    . %d %d %d %d",a[0],a[1],a[2],a[3]);
 #endif 
       a[4] = sys_sbrk(a[1]); 
       break;
 
       case SYS_execve:
 #ifdef SYSCALL_PRINTF
-      Log("系统调用 syscall SYS_execve.");
+      printf("系统调用 syscall SYS_execve . %d %d %d %d",a[0],a[1],a[2],a[3]);
 #endif 
       naive_uload(NULL, (const char *)a[1]); 
       a[4] = 0;
@@ -97,13 +97,15 @@ void do_syscall(Context *c) {
 
       case SYS_gettimeofday:
 #ifdef SYSCALL_PRINTF
-      Log("系统调用 syscall SYS_gettimeofday.");
+      printf("系统调用 syscall SYS_gettimeofday. %d %d %d %d",a[0],a[1],a[2],a[3]);
 #endif 
       a[4] = sys_gettimeofday((void *)a[1]); 
       break;
 
     default: panic("没有实现的系统调用 syscall ID = %d", a[0]);
   }
-  /* 返回结果 */
-  c->GPRx = a[4];
+#ifdef SYSCALL_PRINTF
+      printf(" return %d\n",a[4]);
+#endif 
+   c->GPRx = a[4];
 }

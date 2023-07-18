@@ -161,13 +161,13 @@ void checkregs(uint64_t *ref_regs)
       printf("================= csr diff ======================\n");
       if(cpu_gpr[33] != ref_regs[33]) printf(COLOR_RED); else printf(COLOR_NONE);
       printf("mtvec   %02d: dut = 0x%016lx, ref = 0x%016lx\n", 33, cpu_gpr[33], ref_regs[33]);
-            if(cpu_gpr[33] != ref_regs[33]) printf(COLOR_RED); else printf(COLOR_NONE);
+            if(cpu_gpr[34] != ref_regs[34]) printf(COLOR_RED); else printf(COLOR_NONE);
       printf("mepc    %02d: dut = 0x%016lx, ref = 0x%016lx\n", 34, cpu_gpr[34], ref_regs[34]);
-            if(cpu_gpr[33] != ref_regs[33]) printf(COLOR_RED); else printf(COLOR_NONE);
+            if(cpu_gpr[35] != ref_regs[35]) printf(COLOR_RED); else printf(COLOR_NONE);
       printf("mstatus %02d: dut = 0x%016lx, ref = 0x%016lx\n", 35, cpu_gpr[35], ref_regs[35]);
-            if(cpu_gpr[33] != ref_regs[33]) printf(COLOR_RED); else printf(COLOR_NONE);
+            if(cpu_gpr[36] != ref_regs[36]) printf(COLOR_RED); else printf(COLOR_NONE);
       printf("mcause  %02d: dut = 0x%016lx, ref = 0x%016lx\n", 36, cpu_gpr[36], ref_regs[36]);
-      exec_once();
+      printf(COLOR_NONE);
       debug_exit(1);
     }
   }
@@ -244,6 +244,7 @@ printf("仿真时钟周期约为=%.3f m 有效指令=%lld k ipc=%.3f\n", (double
 void load_image()
 {
   const char* IMG = getenv("IMG");
+  //const char* IMG = "/home/zyx/exam-test/ysyx-exam/nanos-lite/build/nanos-lite-riscv64-nemu.bin";
   // 确保环境变量存在
   if (IMG == NULL) {
       printf("Error: Environment variable IMG not set\n");
@@ -363,7 +364,10 @@ int main(int argc, char** argv, char** env) {
        }
 #ifdef CONFIG_DIFFTEST
         // 遇到越界时候可以在这里打断点，对于错误的pc+4（适配仿真环境+保持尽可能多的数据）
-        //if(cpu_gpr[32] == (uint64_t)0x0000000080004f64) debug_exit(1);
+        //if(cpu_gpr[32] == (uint64_t)0x0000000080004f64)
+        {
+           debug_exit(1);
+        }
         difftest_exec_once();
 #endif
     }

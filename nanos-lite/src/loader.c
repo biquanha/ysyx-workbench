@@ -80,7 +80,7 @@ static uintptr_t loader(PCB *pcb, const char *filename) {
 void naive_uload(PCB *pcb, const char *filename) {
   // 加载到内存中并返回地址到entry中，地址通常是crt0的起始地址
   uintptr_t entry = loader(pcb, filename);
-  Log("Jump to entry = 0x%p - \"%s\"", entry, filename);
+  Log("Jump to entry = %p - \"%s\"", entry, filename);
   ((void(*)())entry) ();//包装成函数指针，执行测试用例
 }
 
