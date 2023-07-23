@@ -16,6 +16,9 @@ setnemu:
 npc:
 	$(MAKE) -j 16 -C $(AM_HOME)/../npc sim
 
+npcclean:
+	$(MAKE) -j 16 -C $(AM_HOME)/../npc clean
+
 ALL = $(basename $(notdir $(shell find tests/. -name "*.c")))
 
 all: $(addprefix Makefile., $(ALL))

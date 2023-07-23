@@ -79,7 +79,7 @@ ysyx_22050019_booth_code #(130)booth_code(
     .code             ( multiplier[2:0]  ),
     .partial_product  ( partial_product  )
 );
-
+reg mul_h;
 // 3段式状态机构建乘法逻辑模块 
 always@(posedge clk) begin
   if(rst_n)state<=IDLE;
@@ -103,6 +103,7 @@ end
 always @(posedge clk) begin
     if(rst_n) begin
         mul_type     <= 0;
+        mul_h        <= 0;
         multiplicand <= 0;
         multiplier   <= 0;
         result       <= 0;
@@ -111,12 +112,14 @@ always @(posedge clk) begin
         case(state)
           IDLE : if(next_state == MULTI) begin
             mul_type     <= mult_type         ;
+            mul_h        <= multiplier_i[63]  ;
             multiplicand <= multiplicand_trans;
             multiplier   <= multiplier_sext   ;
             result       <= 0                 ;
             end
             else begin
             mul_type     <= 0                 ;
+            mul_h        <= 0                 ;
             multiplicand <= 0                 ;
             multiplier   <= 0                 ;
             result       <= 0                 ;   
@@ -131,6 +134,7 @@ always @(posedge clk) begin
             end
           FINISH:if(next_state == IDLE) begin
             mul_type     <= 0                 ;
+            mul_h        <= 0                 ;
             multiplicand <= 0                 ;
             multiplier   <= 0                 ;
             result       <= 0                 ; 
@@ -148,13 +152,15 @@ always @(posedge clk) begin
     
 end
 
+wire [63:0]last_multiplicand = {{2{multiplicand[125]}},multiplicand[127:66]};
+wire [63:0]mulh_result =  mul_h ? result[127:64] - last_multiplicand : result[127:64];
 ysyx_22050019_mux #( .NR_KEY(5), .KEY_LEN(5), .DATA_LEN(64)) ysyx_22050019_mux
 (
   .key         (mul_type), //键
   .default_out (64'b0),
   .lut         ({		
                  	5'b00001,result[63:0],
-				          5'b00010,result[127:64],
+				          5'b00010,mulh_result,
 				          5'b00100,result[127:64],
 				          5'b01000,result[127:64],
 				          5'b10000,{{32{result[31]}}, result[31:0]}
