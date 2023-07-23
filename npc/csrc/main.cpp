@@ -364,10 +364,11 @@ int main(int argc, char** argv, char** env) {
        }
 #ifdef CONFIG_DIFFTEST
         // 遇到越界时候可以在这里打断点，对于错误的pc+4（适配仿真环境+保持尽可能多的数据）
-        //if(cpu_gpr[32] == (uint64_t)0x0000000080004f64)
+        /*if(cpu_gpr[32] == (uint64_t)0x0000000080004f64)
         {
            debug_exit(1);
         }
+        */
         difftest_exec_once();
 #endif
     }
