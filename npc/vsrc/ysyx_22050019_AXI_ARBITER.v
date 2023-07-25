@@ -80,6 +80,9 @@ module ysyx_22050133_axi_arbiter # (
     input  [AXI_DATA_WIDTH-1:0]         axi_r_data_i  
 );
 
+reg r_channel;
+wire w_channel = 1;
+
 assign s2_axi_aw_ready_o= w_channel ? axi_aw_ready_i    : 0;
 assign s1_axi_aw_ready_o= ~w_channel? axi_aw_ready_i    : 0;
 assign axi_aw_valid_o   = w_channel ? s2_axi_aw_valid_i : s1_axi_aw_valid_i;
@@ -115,10 +118,6 @@ assign s1_axi_r_data_o  = ~r_channel? axi_r_data_i      : 0;
 parameter R_IDLE = 1;
 parameter R_S1   = 2;
 parameter R_S2   = 3;
-
-
-reg r_channel;
-wire w_channel = 1;
 
 reg[2:0] rstate;
 reg[2:0] next_rstate;

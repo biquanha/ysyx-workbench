@@ -55,8 +55,13 @@ parameter RAM_DEPTH= INDEX_DEPTH                         ;//64$pow(2,INDEX_WIDTH
 parameter RAML     = INDEX_WIDTH+OFFSET_WIDTH-1          ;//9
 parameter RAMR     = OFFSET_WIDTH                        ;//4
 
+parameter S_IDLE =0;
+parameter S_HIT  =1;
+parameter S_AR   =2;
+parameter S_R    =3;
 
-
+reg[15:0] state;
+reg[15:0] next_state;
 
 // 保存地址，miss后的写数据，偏移寄存器
 reg [ADDR_WIDTH-1:0]   addr  ;
@@ -97,13 +102,23 @@ wire    write_enable = cache_r_valid_i&cache_r_ready_o ? 0 : 1 ;
 assign  RAM_WEN[0] = waynum ? 1 :write_enable;
 assign  RAM_WEN[1] = waynum ? write_enable :1;
 
-parameter S_IDLE =0;
-parameter S_HIT  =1;
-parameter S_AR   =2;
-parameter S_R    =3;
-
-reg[15:0] state;
-reg[15:0] next_state;
+//实例化两块ram以及他们的命中逻辑的添加
+generate
+  genvar i;
+  for(i=0;i<WAY_DEPTH;i=i+1)begin
+  assign hit_wayflag[i]=((tag[i][index_in]==tag_in)&&valid[i][index_in]);
+      S011HD1P_X32Y2D128_BW S011HD1P_X32Y2D128_BW
+      (
+        .Q(RAM_Q[i]),
+        .CLK(clk),
+        .CEN(RAM_CEN),
+        .WEN(RAM_WEN[i]),
+        .BWEN(RAM_BWEN),
+        .A(RAM_A),
+        .D(RAM_D)
+      );
+    end
+endgenerate
 
 always@(posedge clk) begin
   if(rst)state<=S_IDLE;
@@ -244,23 +259,7 @@ always@(posedge clk)begin
   end
 end
 
-//实例化两块ram以及他们的命中逻辑的添加
-generate
-  genvar i;
-  for(i=0;i<WAY_DEPTH;i=i+1)begin
-  assign hit_wayflag[i]=((tag[i][index_in]==tag_in)&&valid[i][index_in]);
-      S011HD1P_X32Y2D128_BW S011HD1P_X32Y2D128_BW
-      (
-        .Q(RAM_Q[i]),
-        .CLK(clk),
-        .CEN(RAM_CEN),
-        .WEN(RAM_WEN[i]),
-        .BWEN(RAM_BWEN),
-        .A(RAM_A),
-        .D(RAM_D)
-      );
-    end
-endgenerate
+
 //与外部ifu访问的改善信号
 assign r_data_valid_o  = cache_r_ready_o&cache_r_valid_i&(cache_ar_len == 0)|(state == S_HIT) ? 1 : r_data_valid;
 assign r_data_o        = cache_r_ready_o&cache_r_valid_i&(cache_ar_len == 0)|(state == S_HIT) ? ((state == S_HIT) ? (r_data_valid ? r_data : RAM_Q[waynum]) : {cache_r_data_i,r_data[63:0]}) : r_data;

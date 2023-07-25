@@ -1,3 +1,4 @@
+make clean
 RESULT=.result
 touch $RESULT
 

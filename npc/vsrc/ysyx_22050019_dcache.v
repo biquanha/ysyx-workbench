@@ -133,9 +133,23 @@ wire write_enable = (state == S_R)&(cache_r_valid_i&cache_r_ready_o)|(state == S
 assign  RAM_WEN[0] = waynum ? 1 :write_enable;
 assign  RAM_WEN[1] = waynum ? write_enable :1;
 
-
-
-
+//实例化两块ram以及他们的命中逻辑的添加
+generate
+  genvar i;
+  for(i=0;i<WAY_DEPTH;i=i+1)begin
+  assign hit_wayflag[i]=((tag[i][index_in]==tag_in) && valid[i][index_in]);
+      S011HD1P_X32Y2D128_BW S011HD1P_X32Y2D128_BW_U0
+      (
+        .Q(RAM_Q[i]),
+        .CLK(clk),
+        .CEN(RAM_CEN),
+        .WEN(RAM_WEN[i]),
+        .BWEN(RAM_BWEN),
+        .A(RAM_A),
+        .D(RAM_D)
+      );
+    end
+endgenerate
 
 always@(posedge clk) begin
   if(rst)state<=S_IDLE;
@@ -345,23 +359,7 @@ always@(posedge clk)begin
   end
 end
 
-//实例化两块ram以及他们的命中逻辑的添加
-generate
-  genvar i;
-  for(i=0;i<WAY_DEPTH;i=i+1)begin
-  assign hit_wayflag[i]=((tag[i][index_in]==tag_in) && valid[i][index_in]);
-      S011HD1P_X32Y2D128_BW S011HD1P_X32Y2D128_BW_U0
-      (
-        .Q(RAM_Q[i]),
-        .CLK(clk),
-        .CEN(RAM_CEN),
-        .WEN(RAM_WEN[i]),
-        .BWEN(RAM_BWEN),
-        .A(RAM_A),
-        .D(RAM_D)
-      );
-    end
-endgenerate
+
 
 //axi的一些需要适配仲裁器的信号
 

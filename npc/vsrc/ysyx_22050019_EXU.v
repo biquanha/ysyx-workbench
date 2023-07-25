@@ -16,23 +16,24 @@ module ysyx_22050019_EXU(
   output [63:0]   wdata
 );
 
-ysyx_22050019_alu alu(
-  .clk  (clk) ,
-  .rst_n(rst_n) ,
-  .op_1(op1),
-  .op_2(op2),
-  .alu_sel(alu_sel),
-  .lsu_stall(lsu_stall),
-  
-  .alu_stall(alu_stall),
-  .alu_ok(wen),
-  .result(result)
-);
 wire wen;
 //reg_control
 assign wdata    = result ;
 assign exu_waddr= alu_stall ? 0 : (wen ? waddr : 0) | waddr_i;
 assign exu_wen  = alu_stall ? 0 : wen_i | wen;
+
+ysyx_22050019_alu alu(
+  .clk      ( clk       ),
+  .rst_n    ( rst_n     ),
+  .op_1     ( op1       ),
+  .op_2     ( op2       ),
+  .alu_sel  ( alu_sel   ),
+  .lsu_stall( lsu_stall ),
+  
+  .alu_stall( alu_stall ),
+  .alu_ok   ( wen       ),
+  .result   ( result    )
+);
 
 reg[4:0] waddr;
 always @(posedge clk)begin

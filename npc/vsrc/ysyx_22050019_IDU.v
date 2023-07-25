@@ -309,12 +309,15 @@ wire b_ab_1_u;
 //pc_branch
 assign inst_j      = inst_jal||inst_jalr||beq&&beq_y||bne&&(~beq_y)||bge&&(~b_ab_1_s)||blt&&b_ab_1_s||bltu&&b_ab_1_u||bgeu&&(~b_ab_1_u)||(ecall||mret); //跳转信号制作处
 wire [1:0]branch   = {(inst_jal||op_b),inst_jalr};
+wire [63:0]flush_result1 = inst_addr_pc+imm64;
+wire [63:0]flush_result2 = (rdata1+imm_12_I_64)&(~64'b1);
 ysyx_22050019_mux #( .NR_KEY(2), .KEY_LEN(2), .DATA_LEN(64)) mux_branch
 (
   .key         (branch), //键
   .default_out (64'd0),
-  .lut         ({2'b10,inst_addr_pc+imm64,
-                 2'b01,(rdata1+imm_12_I_64)&(~64'b1)}),           
+  .lut         ({2'b10,flush_result1,
+                 2'b01,flush_result2
+                 }),           
   .out         (snpc)  //输出
 );
 
@@ -327,9 +330,5 @@ assign b_ab_1_s       = ( ( ( rdata1[63] == 1'b1 ) && ( rdata2[63] == 1'b0 ) )
                         | ( (rdata1[63] == rdata2[63] ) && ( b_ab_s[63] == 1'b1 ) ) );//有符号小于<
 assign b_ab_1_u      = ( ( ( rdata1[63] == 1'b0 ) && ( rdata2[63] == 1'b1 ) ) 
                         | ( (rdata1[63] == rdata2[63] ) && ( b_ab_s[63] == 1'b1 ) ) );//无符号小于<
-
-
-
-
 
 endmodule

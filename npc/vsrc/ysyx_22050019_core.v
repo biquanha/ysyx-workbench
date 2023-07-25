@@ -147,6 +147,7 @@ wire [63:0]wdate_csr;
 /* verilator lint_off UNUSED */wire [63:0]csr_regs_diff[3:0];
 
 wire [63:0]snpc_csr_id;
+wire csr_sel_wen =id_ex_stall ? 1'b0: csr_wen_id_csr ;
 ysyx_22050019_CSR CSR(
     .clk             (clk                 ),
     .rst_n           (rst_n               ),
@@ -154,7 +155,7 @@ ysyx_22050019_CSR CSR(
   
     .csr_inst_type   (csr_inst_type_id_csr),
     .csr_addr        (csr_addr_id_csr     ),
-    .csr_wen         (id_ex_stall ? 1'b0: csr_wen_id_csr ),
+    .csr_wen         (csr_sel_wen         ),
     .rdata1_reg_csr  (rdata1_forwardimg   ),//从reg读到的数据
 
     .snpc            (snpc_csr_id         ),
@@ -720,6 +721,7 @@ ysyx_22050019_pipeline_Control pipe_control(
 wire [63:0] rdata1_forwardimg;
 wire [63:0] rdata2_forwardimg;
 wire        forwarding_stall;
+wire [63:0] reg_wen_sel_forwarding =wdata_ex_reg|wdate_csr_exu ;
 ysyx_22050019_forwarding forwarding(
     .reg_raddr_1_id      ( raddr1_id_regs             ),
     .reg_raddr_2_id      ( raddr2_id_regs             ),
@@ -727,7 +729,7 @@ ysyx_22050019_forwarding forwarding(
     .reg_waddr_lsu       ( reg_waddr_wb               ),
     .reg_wen_exu         ( exu_wen                    ),
     .reg_wen_lsu         ( reg_we_wb                  ),
-    .reg_wen_wdata_exu_i ( wdata_ex_reg|wdate_csr_exu ),
+    .reg_wen_wdata_exu_i ( reg_wen_sel_forwarding     ),
     .reg_wen_wdata_lsu_i ( reg_wdata_wb               ),
     .reg_r_data1_id_i    ( rdata1_id_regs             ),
     .reg_r_data2_id_i    ( rdata2_id_regs             ),

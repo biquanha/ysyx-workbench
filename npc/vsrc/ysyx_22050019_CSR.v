@@ -31,12 +31,13 @@ wire mret_w   = csr_inst_type[3];
 //************
 //csr_wdata->用mux通过通过类型控制读入数据
 wire  [63:0] csr_wdata;
+wire [63:0]rdata_csr_rdata = rdata1_reg_csr|rdata;
 ysyx_22050019_mux #( .NR_KEY(3), .KEY_LEN(8), .DATA_LEN(64)) mux_csr_wdata
 (
   .key         (csr_inst_type), //键
   .default_out ({64{1'b0}}),
   .lut         ({
-                8'b0000_0100,rdata1_reg_csr|rdata,
+                8'b0000_0100,rdata_csr_rdata,
                 8'b0000_0010,64'd0,
                 8'b0000_0001,rdata1_reg_csr
                 
